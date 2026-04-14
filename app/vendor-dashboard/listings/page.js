@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, query, where } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function VendorListingsPage() {
@@ -10,6 +10,8 @@ export default function VendorListingsPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -55,6 +57,52 @@ export default function VendorListingsPage() {
   const products = listings.filter((item) => item.type === "product");
   const rentals = listings.filter((item) => item.type === "rental");
 
+  function getEditLink(item) {
+    if (item.type === "product") return "/vendor-dashboard/create-product";
+    if (item.type === "service") {
+      return item.subtype === "package"
+        ? "/vendor-dashboard/create-service-package"
+        : "/vendor-dashboard/create-service";
+    }
+    if (item.type === "rental") {
+      if (item.subtype === "equipment") return "/vendor-dashboard/create-rental-equipment";
+      if (item.subtype === "housing") return "/vendor-dashboard/create-rental-housing";
+      if (item.subtype === "vehicle") return "/vendor-dashboard/create-rental-vehicle";
+    }
+    return "/vendor-dashboard";
+  }
+
+  function getViewLink(item) {
+    if (item.type === "product") return "/products";
+    if (item.type === "service") return "/services";
+    if (item.type === "rental") return "/rentals";
+    return "/";
+  }
+
+  function getAddLink(type) {
+    if (type === "product") return "/vendor-dashboard/create-product";
+    if (type === "rental") return "/vendor-dashboard/create-rental-equipment";
+    return "/vendor-dashboard/create-service";
+  }
+
+  function handleDeleteConfirm(item) {
+    setDeleteError("");
+    setConfirmDeleteItem(item);
+  }
+
+  async function handleDeleteListing(item) {
+    setDeleteError("");
+
+    try {
+      await deleteDoc(doc(db, "listings", item.id));
+      setListings((current) => current.filter((listing) => listing.id !== item.id));
+      setConfirmDeleteItem(null);
+    } catch (err) {
+      console.error("Delete listing error:", err);
+      setDeleteError("Unable to delete the listing right now. Please try again.");
+    }
+  }
+
   function renderListingCard(item) {
     const subtitle = item.subtype === "package" ? "Package" : item.type === "service" ? "Service" : item.type;
 
@@ -89,17 +137,24 @@ export default function VendorListingsPage() {
 
         <div className="flex flex-wrap gap-3">
           <Link
-            href={item.type === "service" ? "/vendor-dashboard/create-service" : item.type === "product" ? "/vendor-dashboard/create-service" : "/vendor-dashboard/create-service"}
+            href={`${getEditLink(item)}?id=${item.id}`}
             className="rounded-2xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
           >
             Edit
           </Link>
           <Link
-            href="/services"
+            href={getViewLink(item)}
             className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
           >
             View
           </Link>
+          <button
+            type="button"
+            onClick={() => handleDeleteConfirm(item)}
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 transition-all"
+          >
+            Delete
+          </button>
         </div>
       </div>
     );
@@ -180,7 +235,7 @@ export default function VendorListingsPage() {
                   <h2 className="text-2xl font-bold text-slate-900 mt-2">{products.length} product{products.length === 1 ? "" : "s"}</h2>
                 </div>
                 <Link
-                  href="/vendor-dashboard/create-service"
+                  href="/vendor-dashboard/create-product"
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
                 >
                   Add product
@@ -205,7 +260,7 @@ export default function VendorListingsPage() {
                   <h2 className="text-2xl font-bold text-slate-900 mt-2">{rentals.length} rental{rentals.length === 1 ? "" : "s"}</h2>
                 </div>
                 <Link
-                  href="/vendor-dashboard/create-service"
+                  href="/vendor-dashboard/create-rental-equipment"
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
                 >
                   Add rental
@@ -225,6 +280,45 @@ export default function VendorListingsPage() {
           </>
         )}
       </section>
+
+      {confirmDeleteItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-6">
+          <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl">
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">Confirm deletion</p>
+                <h2 className="text-2xl font-bold text-slate-900 mt-3">Delete this listing?</h2>
+              </div>
+              <p className="text-slate-600">
+                Are you sure you want to permanently delete <span className="font-semibold text-slate-900">{confirmDeleteItem.title || "this item"}</span>? This action cannot be undone.
+              </p>
+
+              {deleteError && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteItem(null)}
+                className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+              >
+                No, keep it
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteListing(confirmDeleteItem)}
+                className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-all"
+              >
+                Yes, delete permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

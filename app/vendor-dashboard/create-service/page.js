@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function CreateServicePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const listingId = searchParams?.get("id");
+  const isEditMode = Boolean(listingId);
 
   const activeTab = "service";
-  const pageLabel = "Create Offering";
-  const pageTitle = "Add New Service";
-  const pageDescription =
-    "Define the details, pricing, and delivery for your new professional offering.";
-  const publishButtonText = "Publish Service";
+  const pageLabel = isEditMode ? "Edit Offering" : "Create Offering";
+  const pageTitle = isEditMode ? "Edit Service" : "Add New Service";
+  const pageDescription = isEditMode
+    ? "Update the details, pricing, and delivery for this service offering."
+    : "Define the details, pricing, and delivery for your new professional offering.";
+  const publishButtonText = isEditMode ? "Update Service" : "Publish Service";
 
   const [deliveryMode, setDeliveryMode] = useState("remote");
   const [formData, setFormData] = useState({
@@ -26,6 +30,41 @@ export default function CreateServicePage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!listingId) return;
+
+    async function loadListing() {
+      try {
+        const listingDoc = await getDoc(doc(db, "listings", listingId));
+
+        if (!listingDoc.exists()) {
+          setError("Listing not found for editing.");
+          return;
+        }
+
+        const data = listingDoc.data();
+        if (data.type !== "service" || data.subtype !== "single") {
+          setError("This listing cannot be edited here.");
+          return;
+        }
+
+        setDeliveryMode(data.deliveryMode || "remote");
+        setFormData({
+          title: data.title || "",
+          description: data.description || "",
+          price: data.price?.toString() || "",
+          duration: data.duration?.toString() || "30",
+          studioAddress: data.studioAddress || "882 West Editorial Lane, Suite 400, Chicago IL",
+        });
+      } catch (err) {
+        console.error("Load listing for edit error:", err);
+        setError("Unable to load the listing for editing.");
+      }
+    }
+
+    loadListing();
+  }, [listingId]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -89,12 +128,16 @@ export default function CreateServicePage() {
         studioAddress:
           deliveryMode === "studio" ? formData.studioAddress.trim() : "",
         status: "published",
-        createdAt: serverTimestamp(),
+        ...(isEditMode ? { updatedAt: serverTimestamp() } : { createdAt: serverTimestamp() }),
       };
 
-      await addDoc(collection(db, "listings"), listingData);
-
-      setMessage("Service published successfully.");
+      if (isEditMode && listingId) {
+        await updateDoc(doc(db, "listings", listingId), listingData);
+        setMessage("Service updated successfully.");
+      } else {
+        await addDoc(collection(db, "listings"), listingData);
+        setMessage("Service published successfully.");
+      }
 
       setFormData({
         title: "",

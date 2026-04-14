@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function CreateServicePackagePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const listingId = searchParams?.get("id");
+  const isEditMode = Boolean(listingId);
 
   const activeTab = "package";
-  const pageLabel = "New Listing";
-  const pageTitle = "Add New Service Package";
-  const pageDescription =
+  const pageLabel = isEditMode ? "Edit Listing" : "New Listing";
+  const pageTitle = isEditMode ? "Edit Service Package" : "Add New Service Package";
+  const pageDescription = isEditMode
+    ? "Update this package offering with new pricing, services, and delivery details."
+    : "Combine multiple individual services into a curated bundle with exclusive pricing for your clients.";
     "Combine multiple individual services into a curated bundle with exclusive pricing for your clients.";
   const publishButtonText = "Publish Package";
 
@@ -44,6 +49,47 @@ export default function CreateServicePackagePage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!listingId) return;
+
+    async function loadListing() {
+      try {
+        const listingDoc = await getDoc(doc(db, "listings", listingId));
+        if (!listingDoc.exists()) {
+          setError("Listing not found for editing.");
+          return;
+        }
+
+        const data = listingDoc.data();
+        if (data.type !== "service" || data.subtype !== "package") {
+          setError("This listing cannot be edited here.");
+          return;
+        }
+
+        setDeliveryMode(data.deliveryMode || "studio");
+        setFormData({
+          packageTitle: data.title || "",
+          packageDescription: data.description || "",
+          packageRate: data.price?.toString() || "",
+          duration: data.totalDuration?.toString() || "60",
+          studioAddress: data.studioAddress || "882 West Editorial Lane, Suite 400, Chicago IL",
+          services: data.services?.map((service, index) => ({
+            id: Date.now() + index,
+            name: service.name || "",
+            description: service.description || "",
+            duration: service.duration?.toString() || "",
+            price: service.price?.toString() || "",
+          })) || [],
+        });
+      } catch (err) {
+        console.error("Load package for edit error:", err);
+        setError("Unable to load the package for editing.");
+      }
+    }
+
+    loadListing();
+  }, [listingId]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -174,12 +220,16 @@ export default function CreateServicePackagePage() {
           price: Number(service.price),
         })),
         status: "published",
-        createdAt: serverTimestamp(),
+        ...(isEditMode ? { updatedAt: serverTimestamp() } : { createdAt: serverTimestamp() }),
       };
 
-      await addDoc(collection(db, "listings"), listingData);
-
-      setMessage("Package published successfully.");
+      if (isEditMode && listingId) {
+        await updateDoc(doc(db, "listings", listingId), listingData);
+        setMessage("Package updated successfully.");
+      } else {
+        await addDoc(collection(db, "listings"), listingData);
+        setMessage("Package published successfully.");
+      }
 
       setFormData({
         packageTitle: "",

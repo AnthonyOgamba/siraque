@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function CreateProductPage() {
-  const pageLabel = "Create Offering";
-  const pageTitle = "Add New Product";
-  const pageDescription =
-    "Define the details, pricing, stock, and pickup information for your product listing.";
-  const publishButtonText = "Publish Product";
+  const searchParams = useSearchParams();
+  const listingId = searchParams?.get("id");
+  const isEditMode = Boolean(listingId);
+
+  const pageLabel = isEditMode ? "Edit Offering" : "Create Offering";
+  const pageTitle = isEditMode ? "Edit Product" : "Add New Product";
+  const pageDescription = isEditMode
+    ? "Update the product details, stock, pricing, and pickup information."
+    : "Define the details, pricing, stock, and pickup information for your product listing.";
+  const publishButtonText = isEditMode ? "Update Product" : "Publish Product";
 
   const [deliveryMode, setDeliveryMode] = useState("pickup");
   const [formData, setFormData] = useState({
@@ -25,6 +31,42 @@ export default function CreateProductPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!listingId) return;
+
+    async function loadListing() {
+      try {
+        const listingDoc = await getDoc(doc(db, "listings", listingId));
+        if (!listingDoc.exists()) {
+          setError("Listing not found for editing.");
+          return;
+        }
+
+        const data = listingDoc.data();
+        if (data.type !== "product") {
+          setError("This listing cannot be edited here.");
+          return;
+        }
+
+        setDeliveryMode(data.deliveryMode || "pickup");
+        setFormData({
+          title: data.title || "",
+          description: data.description || "",
+          price: data.price?.toString() || "",
+          stock: data.stock?.toString() || "",
+          category: data.category || "",
+          condition: data.condition || "New",
+          pickupAddress: data.pickupAddress || "882 West Editorial Lane, Suite 400, Chicago IL",
+        });
+      } catch (err) {
+        console.error("Load product for edit error:", err);
+        setError("Unable to load the product for editing.");
+      }
+    }
+
+    loadListing();
+  }, [listingId]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -94,12 +136,16 @@ export default function CreateProductPage() {
         pickupAddress:
           deliveryMode === "pickup" ? formData.pickupAddress.trim() : "",
         status: "published",
-        createdAt: serverTimestamp(),
+        ...(isEditMode ? { updatedAt: serverTimestamp() } : { createdAt: serverTimestamp() }),
       };
 
-      await addDoc(collection(db, "listings"), listingData);
-
-      setMessage("Product published successfully.");
+      if (isEditMode && listingId) {
+        await updateDoc(doc(db, "listings", listingId), listingData);
+        setMessage("Product updated successfully.");
+      } else {
+        await addDoc(collection(db, "listings"), listingData);
+        setMessage("Product published successfully.");
+      }
 
       setFormData({
         title: "",

@@ -2,17 +2,201 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../utils/firebase";
+import SiteHeader from "../components/SiteHeader";
+import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
+import { auth, db } from "../utils/firebase";
 
 export default function ServicesPage() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedPackageItems, setSelectedPackageItems] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
 
-  function handleSelectService(service) {
+  useEffect(() => {
+    const savedCart = window.localStorage.getItem("siraque_checkout_cart");
+    if (savedCart) {
+      const parsedCart = JSON.parse(savedCart);
+      setCart(parsedCart);
+      setCartCount(parsedCart.reduce((count, item) => count + (item.quantity || 1), 0));
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+    return unsubscribe;
+  }, []);
+
+  function saveCart(nextCart) {
+    window.localStorage.setItem("siraque_checkout_cart", JSON.stringify(nextCart));
+    setCart(nextCart);
+    setCartCount(nextCart.reduce((count, item) => count + (item.quantity || 1), 0));
+  }
+
+  function saveClickedItem(service) {
+    const savedClicks = window.localStorage.getItem("siraque_saved_items");
+    const currentSaved = savedClicks ? JSON.parse(savedClicks) : [];
+    const nextSaved = [
+      {
+        id: service.id,
+        title: service.title || "Untitled item",
+        subtitle: service.subtype || service.type || "Service",
+        price: Number(service.price) || 0,
+        type: service.type || "service",
+        image: service.image || service.photoURL || "",
+        clickedAt: new Date().toISOString(),
+      },
+      ...currentSaved.filter((item) => item.id !== service.id),
+    ].slice(0, 20);
+
+    window.localStorage.setItem("siraque_saved_items", JSON.stringify(nextSaved));
+  }
+
+  function getServiceItemKey(item, index, serviceId) {
+    return item.id || item.name || item.title || `${serviceId || "package"}-service-${index}`;
+  }
+
+  function initializePackageSelection(service) {
+    if (service?.subtype !== "package" || !Array.isArray(service.services)) {
+      setSelectedPackageItems([]);
+      return;
+    }
+
+    const selectedKeys = service.services
+      .slice(0, Math.min(2, service.services.length))
+      .map((item, index) => getServiceItemKey(item, index, service.id));
+
+    setSelectedPackageItems(selectedKeys);
+  }
+
+  function togglePackageItem(itemKey) {
+    setSelectedPackageItems((current) =>
+      current.includes(itemKey)
+        ? current.filter((key) => key !== itemKey)
+        : [...current, itemKey]
+    );
+  }
+
+  function getPackageServiceItems(service) {
+    return Array.isArray(service?.services)
+      ? service.services.map((item, index) => ({
+          ...item,
+          key: getServiceItemKey(item, index, service.id),
+        }))
+      : [];
+  }
+
+  function getPackageSelectedTotal(service) {
+    return getPackageServiceItems(service)
+      .filter((item) => selectedPackageItems.includes(item.key))
+      .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+  }
+
+  function getUserInitial() {
+    if (!user) return "U";
+    if (user.photoURL) return "";
+    const email = user.email || "";
+    return email[0]?.toUpperCase() || "U";
+  }
+
+  const filteredServices = services.filter((service) => {
+    if (!searchQuery.trim()) return true;
+    const lowerQuery = searchQuery.toLowerCase();
+    return [
+      service.title,
+      service.description,
+      service.type,
+      service.subtype,
+      service.category,
+      service.condition,
+      service.deliveryMode,
+      service.location,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toString().toLowerCase().includes(lowerQuery));
+  });
+
+  async function handleSelectService(service) {
     setSelectedService(service);
+    saveClickedItem(service);
+    initializePackageSelection(service);
+
+    if (!user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "listings", service.id), {
+        clicks: increment(1),
+      });
+    } catch (err) {
+      console.error("Service click tracking failed:", err);
+    }
+  }
+
+  function handleAddToCart(event, service) {
+    event.stopPropagation();
+
+    setCart((currentCart) => {
+      if (service.subtype === "package" && Array.isArray(service.services)) {
+        const packageItems = getPackageServiceItems(service);
+        const selectedItems = packageItems.filter((item) => selectedPackageItems.includes(item.key));
+        const selectedCount = selectedItems.length;
+
+        if (selectedCount < 2) {
+          return currentCart;
+        }
+
+        const totalPrice = selectedItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+        const nextCart = [
+          ...currentCart.filter((item) => item.id !== service.id),
+          {
+            id: service.id,
+            title: `${service.title || "Package"} (${selectedCount} services)`,
+            price: totalPrice,
+            vendorId: service.vendorId || "",
+            type: service.type,
+            subtype: service.subtype,
+            quantity: selectedCount,
+            packageItems: selectedItems.map(({ key, ...item }) => item),
+            packageTotal: totalPrice,
+          },
+        ];
+
+        saveCart(nextCart);
+        return nextCart;
+      }
+
+      const existingItem = currentCart.find((item) => item.id === service.id);
+      const nextCart = existingItem
+        ? currentCart.map((item) =>
+            item.id === service.id
+              ? { ...item, quantity: (item.quantity || 1) + 1 }
+              : item
+          )
+        : [
+            ...currentCart,
+            {
+              id: service.id,
+              title: service.title || "Untitled item",
+              price: Number(service.price) || 0,
+              vendorId: service.vendorId || "",
+              type: service.type,
+              subtype: service.subtype,
+              quantity: 1,
+            },
+          ];
+
+      saveCart(nextCart);
+      return nextCart;
+    });
   }
 
   async function fetchServices() {
@@ -65,62 +249,13 @@ export default function ServicesPage() {
 
   return (
     <main className="min-h-screen bg-[#f9f9fb] text-slate-900">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
-        <div className="max-w-screen-2xl mx-auto px-10 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-12">
-            <Link href="/" className="text-2xl font-bold tracking-tighter text-slate-900">
-              Siraque
-            </Link>
-
-            <div className="hidden md:flex items-center gap-8 tracking-tight">
-              <Link
-                href="/products"
-                className="text-slate-600 hover:text-orange-600 transition-all duration-300"
-              >
-                Products
-              </Link>
-              <Link
-                href="/services"
-                className="text-orange-600 font-semibold transition-all duration-300"
-              >
-                Services
-              </Link>
-              <Link
-                href="/rentals"
-                className="text-slate-600 hover:text-orange-600 transition-all duration-300"
-              >
-                Rentals
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden lg:flex items-center bg-slate-100 px-4 py-2 rounded-full border border-slate-200">
-              <input
-                type="text"
-                placeholder="Find anything..."
-                className="bg-transparent border-none outline-none text-sm w-48"
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                Notifications
-              </button>
-              <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                Checkout
-              </button>
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 hover:border-orange-600 transition-all cursor-pointer">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-9_s2IwwI1_LatEY6gZ_zCGjIdR3He8SOafuAsSzClDoNnzwuBeP-GxIXdlkv0g6-C35w3XQfyLxr8kLrZr50NddH0m7jHUWE0aADxNjWZVnzQtDEwsmnWPFwL6G3sUimn0TfD_uzpwfNvhLwvrABb7DDFXh8UHC6jAvw3ytPLRZb7KPXeVGTwXg75-ZYJJ8R9NksFDxgkDMQdOJTJCsWwpENfHELB_dj8_ZnCRBOyIdWeh5ceWUlXvg0NqNiE8uY0LhozV8ZC-Pe"
-                  alt="Vendor avatar"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader
+        activePage="services"
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        showSearch
+        searchPlaceholder="Find anything..."
+      />
 
       <section className="max-w-7xl mx-auto px-8 pt-12 pb-10">
         <div className="space-y-3">
@@ -149,18 +284,19 @@ export default function ServicesPage() {
           </div>
         )}
 
-        {!loading && !error && services.length === 0 && (
+        {!loading && !error && filteredServices.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
-            No services have been published yet.
+            No services match your search. Try another keyword.
           </div>
         )}
 
-        {!loading && !error && services.length > 0 && (
+        {!loading && !error && filteredServices.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {services.map((service) => {
+            {filteredServices.flatMap((service) => {
               const isPackage = service.subtype === "package";
+              const inCart = cart.some((item) => item.id === service.id);
 
-              return (
+              const card = (
                 <div
                   key={service.id}
                   role="button"
@@ -223,70 +359,149 @@ export default function ServicesPage() {
                     <div className="mt-auto text-3xl font-black text-slate-900">
                       ${(Number(service.price) || 0).toFixed(2)}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (isPackage) {
+                          handleSelectService(service);
+                        } else {
+                          handleAddToCart(event, service);
+                        }
+                      }}
+                      className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
+                    >
+                      {isPackage ? "Select package items" : inCart ? "Add another" : "Add to Cart"}
+                    </button>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
 
-        {selectedService && (
-          <section className="mt-12 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-orange-600 text-lg">📦</span>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
-                      {selectedService.subtype === "package" ? "Package Details" : "Service Details"}
-                    </p>
-                    <h2 className="text-2xl font-bold text-slate-900">
-                      {selectedService.title || "Selected Service"}
-                    </h2>
-                  </div>
-                </div>
-                <p className="text-slate-600 max-w-3xl">
-                  {selectedService.description || "This service includes the selected offering details."}
-                </p>
-              </div>
+              if (selectedService?.id !== service.id) {
+                return [card];
+              }
 
-              <button
-                onClick={() => setSelectedService(null)}
-                className="self-start rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
-              >
-                Close details
-              </button>
-            </div>
-
-            {selectedService.subtype === "package" ? (
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
-                {Array.isArray(selectedService.services) && selectedService.services.length > 0 ? (
-                  selectedService.services.map((item, index) => (
-                    <div key={index} className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-semibold text-slate-900">{item.name}</p>
-                          <p className="text-sm text-slate-500">{item.description || "No description"}</p>
+              return [
+                card,
+                <div key={`${service.id}-details`} className="col-span-full">
+                  <section className="mt-12 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-orange-600 text-lg">📦</span>
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
+                              {selectedService.subtype === "package" ? "Package Details" : "Service Details"}
+                            </p>
+                            <h2 className="text-2xl font-bold text-slate-900">
+                              {selectedService.title || "Selected Service"}
+                            </h2>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900">{item.duration || 0}m</p>
-                          <p className="text-sm text-slate-500">${(Number(item.price) || 0).toFixed(2)}</p>
-                        </div>
+                        <p className="text-slate-600 max-w-3xl">
+                          {selectedService.description || "This service includes the selected offering details."}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleAddToCart(event, selectedService);
+                          }}
+                          disabled={
+                            selectedService.subtype === "package" && selectedPackageItems.length < 2
+                          }
+                          className="rounded-full bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {selectedService.subtype === "package"
+                            ? selectedPackageItems.length >= 2
+                              ? `Add ${selectedPackageItems.length} services to Cart`
+                              : "Select at least 2 services"
+                            : "Add to Cart"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedService(null);
+                            setSelectedPackageItems([]);
+                          }}
+                          className="self-start rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
+                        >
+                          Close details
+                        </button>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
-                    No package items are available for this selection.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="mt-8 rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
-                This is a single service. Use the details above to learn more about the offering.
-              </div>
-            )}
-          </section>
+
+                    {selectedService.subtype === "package" ? (
+                      <div className="mt-8 space-y-6">
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                          <p className="text-sm text-slate-500">
+                            Select at least 2 services from this package. Each service carries its own price.
+                          </p>
+                          <p className="mt-3 text-sm text-slate-700">
+                            Selected: <span className="font-semibold text-slate-900">{selectedPackageItems.length}</span> /{' '}
+                            <span className="font-semibold text-slate-900">{Array.isArray(selectedService.services) ? selectedService.services.length : 0}</span>
+                          </p>
+                          <p className="mt-2 text-sm font-semibold text-orange-600">
+                            Total selected price: <span>${getPackageSelectedTotal(selectedService).toFixed(2)}</span>
+                          </p>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {Array.isArray(selectedService.services) && selectedService.services.length > 0 ? (
+                            getPackageServiceItems(selectedService).map((item, index) => {
+                              const selected = selectedPackageItems.includes(item.key);
+                              return (
+                                <button
+                                  key={item.key}
+                                  type="button"
+                                  onClick={() => togglePackageItem(item.key)}
+                                  className={`rounded-3xl border p-5 text-left transition-all ${
+                                    selected
+                                      ? 'border-orange-500 bg-orange-50'
+                                      : 'border-slate-200 bg-slate-50'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                      <p className="font-semibold text-slate-900">{item.name || item.title || `Service ${index + 1}`}</p>
+                                      <p className="text-sm text-slate-500 mt-1">{item.description || 'No description'}</p>
+                                    </div>
+                                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold ${
+                                      selected
+                                        ? 'border-orange-600 bg-orange-600 text-white'
+                                        : 'border-slate-300 text-slate-400'
+                                    }`}>
+                                      {selected ? '✓' : index + 1}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                                    <span>{item.duration || 0}m</span>
+                                    <span>${(Number(item.price) || 0).toFixed(2)}</span>
+                                  </div>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
+                              No package items are available for this selection.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-8 rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
+                        This is a single service. Use the details above to learn more about the offering.
+                      </div>
+                    )}
+                  </section>
+                </div>,
+              ];
+            })}
+          </div>
         )}
       </section>
     </main>

@@ -18,6 +18,10 @@ export default function VendorDashboardPage() {
     return unsubscribe;
   }, []);
 
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalClicks, setTotalClicks] = useState(0);
+
   useEffect(() => {
     async function fetchVendorListings() {
       if (!userId) {
@@ -49,6 +53,37 @@ export default function VendorDashboardPage() {
     fetchVendorListings();
   }, [userId]);
 
+  useEffect(() => {
+    async function fetchVendorBookings() {
+      if (!userId) {
+        return;
+      }
+
+      try {
+        const bookingsRef = collection(db, "bookings");
+        const bookingsQuery = query(bookingsRef, where("vendorId", "==", userId));
+        const snapshot = await getDocs(bookingsQuery);
+        const bookingsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+        setTotalBookings(bookingsData.length);
+        setTotalRevenue(
+          bookingsData.reduce(
+            (sum, booking) => sum + (Number(booking.totalPrice) || 0),
+            0
+          )
+        );
+      } catch (err) {
+        console.error("Vendor bookings load error:", err);
+      }
+    }
+
+    fetchVendorBookings();
+  }, [userId]);
+
+  useEffect(() => {
+    setTotalClicks(vendorListings.reduce((sum, item) => sum + (item.clicks || 0), 0));
+  }, [vendorListings]);
+
   return (
     <main className="bg-[#f9f9fb] text-[#2d3338] min-h-screen">
       <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl flex justify-between items-center px-6 h-16">
@@ -61,7 +96,7 @@ export default function VendorDashboardPage() {
 
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center border border-orange-200">
-            <span className="text-orange-600 text-sm">👤</span>
+            <span className="text-slate-500 text-sm">👤</span>
           </div>
         </div>
       </header>
@@ -97,13 +132,13 @@ export default function VendorDashboardPage() {
               <span className="text-sm">Listings</span>
             </Link>
 
-            <a
-              href="#"
+            <Link
+              href="/vendor-dashboard/bookings"
               className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-100 transition-transform duration-300 hover:translate-x-1"
             >
               <span></span>
-              <span className="text-sm">Orders</span>
-            </a>
+              <span className="text-sm">Bookings</span>
+            </Link>
 
             <a
               href="#"
@@ -138,7 +173,7 @@ export default function VendorDashboardPage() {
           <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500 h-full">
             <div className="relative z-10 flex h-full flex-col">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-orange-600 text-3xl"></span>
+                <span className="text-slate-500 text-3xl"></span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Product</h3>
               <p className="text-xs text-slate-600 mb-6 leading-5">
@@ -156,7 +191,7 @@ export default function VendorDashboardPage() {
           <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500 h-full">
             <div className="relative z-10 flex h-full flex-col">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-orange-600 text-3xl"></span>
+                <span className="text-slate-500 text-3xl"></span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Service</h3>
               <p className="text-xs text-slate-600 mb-6 leading-5">
@@ -176,7 +211,7 @@ export default function VendorDashboardPage() {
           <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500 h-full">
             <div className="relative z-10 flex h-full flex-col">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-orange-600 text-3xl"></span>
+                <span className="text-slate-500 text-3xl"></span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Rental</h3>
               <p className="text-xs text-slate-600 mb-6 leading-5">
@@ -209,37 +244,34 @@ export default function VendorDashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="bg-white rounded-[2rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
-              <p className="text-sm font-medium text-slate-500 mb-2">Total Sales</p>
-              <h4 className="text-4xl font-extrabold text-slate-900">$24,850</h4>
+              <p className="text-sm font-medium text-slate-500 mb-2">Total Bookings</p>
+              <h4 className="text-4xl font-extrabold text-slate-900">{totalBookings}</h4>
               <div className="mt-4 flex items-center gap-2">
-                <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded-full">
-                  +12.4%
+                <span className="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                  Live
                 </span>
-                <span className="text-xs text-slate-400">vs last month</span>
+                <span className="text-xs text-slate-400">Bookings by customers</span>
               </div>
               <div className="absolute right-0 bottom-0 w-24 h-24 bg-orange-50/50 rounded-tl-full -mr-4 -mb-4"></div>
             </div>
 
             <div className="bg-white rounded-[2rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
-              <p className="text-sm font-medium text-slate-500 mb-2">Active Listings</p>
-              <h4 className="text-4xl font-extrabold text-slate-900">42</h4>
+              <p className="text-sm font-medium text-slate-500 mb-2">Total Revenue</p>
+              <h4 className="text-4xl font-extrabold text-slate-900">${totalRevenue.toFixed(2)}</h4>
               <div className="mt-4 flex items-center gap-2">
                 <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
-                  Optimal
+                  Calculated
                 </span>
-                <span className="text-xs text-slate-400">Inventory level</span>
+                <span className="text-xs text-slate-400">From completed bookings</span>
               </div>
               <div className="absolute right-0 bottom-0 w-24 h-24 bg-slate-50 rounded-tl-full -mr-4 -mb-4"></div>
             </div>
 
             <div className="bg-white rounded-[2rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
-              <p className="text-sm font-medium text-slate-500 mb-2">Customer Rating</p>
-              <div className="flex items-center gap-2">
-                <h4 className="text-4xl font-extrabold text-slate-900">4.9</h4>
-                <span className="text-orange-500 text-xl">★</span>
-              </div>
+              <p className="text-sm font-medium text-slate-500 mb-2">Listing Clicks</p>
+              <h4 className="text-4xl font-extrabold text-slate-900">{totalClicks}</h4>
               <div className="mt-4 flex items-center gap-2">
-                <span className="text-xs text-slate-400">From 182 reviews</span>
+                <span className="text-xs text-slate-400">Customer interest on your listings</span>
               </div>
               <div className="absolute right-0 bottom-0 w-24 h-24 bg-orange-50/30 rounded-tl-full -mr-4 -mb-4"></div>
             </div>

@@ -2,17 +2,129 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../utils/firebase";
+import SiteHeader from "../components/SiteHeader";
+import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
+import { auth, db } from "../utils/firebase";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
 
-  function handleSelectProduct(product) {
+  useEffect(() => {
+    const savedCart = window.localStorage.getItem("siraque_checkout_cart");
+    if (savedCart) {
+      const parsedCart = JSON.parse(savedCart);
+      setCart(parsedCart);
+      setCartCount(parsedCart.reduce((count, item) => count + (item.quantity || 1), 0));
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+    return unsubscribe;
+  }, []);
+
+  function saveCart(nextCart) {
+    window.localStorage.setItem("siraque_checkout_cart", JSON.stringify(nextCart));
+    setCart(nextCart);
+    setCartCount(nextCart.reduce((count, item) => count + (item.quantity || 1), 0));
+  }
+
+  function saveClickedItem(product) {
+    const savedClicks = window.localStorage.getItem("siraque_saved_items");
+    const currentSaved = savedClicks ? JSON.parse(savedClicks) : [];
+    const nextSaved = [
+      {
+        id: product.id,
+        title: product.title || "Untitled item",
+        subtitle: product.subtype || product.type || "Product",
+        price: Number(product.price) || 0,
+        type: product.type || "product",
+        image: product.image || product.photoURL || "",
+        clickedAt: new Date().toISOString(),
+      },
+      ...currentSaved.filter((item) => item.id !== product.id),
+    ].slice(0, 20);
+
+    window.localStorage.setItem("siraque_saved_items", JSON.stringify(nextSaved));
+  }
+
+  function getUserInitial() {
+    if (!user) return "U";
+    if (user.photoURL) return "";
+    const email = user.email || "";
+    return email[0]?.toUpperCase() || "U";
+  }
+
+  const filteredProducts = products.filter((product) => {
+    if (!searchQuery.trim()) return true;
+    const lowerQuery = searchQuery.toLowerCase();
+    return [
+      product.title,
+      product.description,
+      product.type,
+      product.subtype,
+      product.category,
+      product.condition,
+      product.deliveryMode,
+      product.pickupAddress,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toString().toLowerCase().includes(lowerQuery));
+  });
+
+  async function handleSelectProduct(product) {
     setSelectedProduct(product);
+    saveClickedItem(product);
+
+    if (!user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "listings", product.id), {
+        clicks: increment(1),
+      });
+    } catch (err) {
+      console.error("Product click tracking failed:", err);
+    }
+  }
+
+  function handleAddToCart(event, product) {
+    event.stopPropagation();
+
+    setCart((currentCart) => {
+      const existingItem = currentCart.find((item) => item.id === product.id);
+      const nextCart = existingItem
+        ? currentCart.map((item) =>
+            item.id === product.id
+              ? { ...item, quantity: (item.quantity || 1) + 1 }
+              : item
+          )
+        : [
+            ...currentCart,
+            {
+              id: product.id,
+              title: product.title || "Untitled item",
+              price: Number(product.price) || 0,
+              vendorId: product.vendorId || "",
+              type: product.type,
+              subtype: product.subtype,
+              quantity: 1,
+            },
+          ];
+
+      saveCart(nextCart);
+      return nextCart;
+    });
   }
 
   async function fetchProducts() {
@@ -49,60 +161,13 @@ export default function ProductsPage() {
 
   return (
     <main className="min-h-screen bg-[#f9f9fb] text-slate-900">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
-        <div className="max-w-screen-2xl mx-auto px-10 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-12">
-            <Link href="/" className="text-2xl font-bold tracking-tighter text-slate-900">
-              Siraque
-            </Link>
-
-            <div className="hidden md:flex items-center gap-8 tracking-tight">
-              <Link
-                href="/products"
-                className="text-orange-600 font-semibold transition-all duration-300"
-              >
-                Products
-              </Link>
-              <Link
-                href="/services"
-                className="text-slate-600 hover:text-orange-600 transition-all duration-300"
-              >
-                Services
-              </Link>
-              <Link
-                href="/rentals"
-                className="text-slate-600 hover:text-orange-600 transition-all duration-300"
-              >
-                Rentals
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden lg:flex items-center bg-slate-100 px-4 py-2 rounded-full border border-slate-200">
-              <input
-                type="text"
-                placeholder="Find anything..."
-                className="bg-transparent border-none outline-none text-sm w-48"
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                Notifications
-              </button>
-              <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                Checkout
-              </button>
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 hover:border-orange-600 transition-all cursor-pointer">
-                <div className="w-full h-full flex items-center justify-center text-slate-700 font-semibold">
-                  U
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader
+        activePage="products"
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        showSearch
+        searchPlaceholder="Find anything..."
+      />
 
       <section className="max-w-7xl mx-auto px-8 pt-12 pb-10">
         <div className="space-y-3">
@@ -131,16 +196,17 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {!loading && !error && products.length === 0 && (
+        {!loading && !error && filteredProducts.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
-            No products have been published yet.
+            No products match your search. Try another keyword.
           </div>
         )}
 
-        {!loading && !error && products.length > 0 && (
+        {!loading && !error && filteredProducts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {products.map((product) => {
-              return (
+            {filteredProducts.flatMap((product) => {
+              const inCart = cart.some((item) => item.id === product.id);
+              const card = (
                 <div
                   key={product.id}
                   role="button"
@@ -202,89 +268,116 @@ export default function ProductsPage() {
                     <div className="mt-auto text-3xl font-black text-slate-900">
                       ${(Number(product.price) || 0).toFixed(2)}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={(event) => handleAddToCart(event, product)}
+                      className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
+                    >
+                      {inCart ? "Add another" : "Add to Cart"}
+                    </button>
                   </div>
                 </div>
               );
+
+              if (selectedProduct?.id !== product.id) {
+                return [card];
+              }
+
+              return [
+                card,
+                <div key={`${product.id}-details`} className="col-span-full">
+                  <section className="mt-12 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-orange-600 text-lg">🛍️</span>
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
+                              Product Details
+                            </p>
+                            <h2 className="text-2xl font-bold text-slate-900">
+                              {selectedProduct.title || "Selected Product"}
+                            </h2>
+                          </div>
+                        </div>
+                        <p className="text-slate-600 max-w-3xl">
+                          {selectedProduct.description || "This product includes the selected item details."}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleAddToCart(event, selectedProduct);
+                          }}
+                          className="rounded-full bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
+                        >
+                          Add to Cart
+                        </button>
+                        <button
+                          onClick={() => setSelectedProduct(null)}
+                          className="self-start rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
+                        >
+                          Close details
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                        <p className="text-sm text-slate-500">Category</p>
+                        <p className="font-semibold text-slate-900 mt-1">
+                          {selectedProduct.category || "General"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                        <p className="text-sm text-slate-500">Condition</p>
+                        <p className="font-semibold text-slate-900 mt-1">
+                          {selectedProduct.condition || "New"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                        <p className="text-sm text-slate-500">Stock</p>
+                        <p className="font-semibold text-slate-900 mt-1">
+                          {selectedProduct.stock || 0} available
+                        </p>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                        <p className="text-sm text-slate-500">Fulfillment</p>
+                        <p className="font-semibold text-slate-900 mt-1">
+                          {selectedProduct.deliveryMode === "delivery"
+                            ? "Local Delivery"
+                            : selectedProduct.deliveryMode === "pickup"
+                            ? "Pickup"
+                            : "Pickup"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 md:col-span-2">
+                        <p className="text-sm text-slate-500">Pickup Address</p>
+                        <p className="font-semibold text-slate-900 mt-1">
+                          {selectedProduct.pickupAddress || "No pickup address provided."}
+                        </p>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 md:col-span-2">
+                        <p className="text-sm text-slate-500">Price</p>
+                        <p className="text-2xl font-black text-slate-900 mt-1">
+                          ${(Number(selectedProduct.price) || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                </div>,
+              ];
             })}
           </div>
-        )}
-
-        {selectedProduct && (
-          <section className="mt-12 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-orange-600 text-lg">🛍️</span>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
-                      Product Details
-                    </p>
-                    <h2 className="text-2xl font-bold text-slate-900">
-                      {selectedProduct.title || "Selected Product"}
-                    </h2>
-                  </div>
-                </div>
-                <p className="text-slate-600 max-w-3xl">
-                  {selectedProduct.description || "This product includes the selected item details."}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="self-start rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
-              >
-                Close details
-              </button>
-            </div>
-
-            <div className="mt-8 grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
-                <p className="text-sm text-slate-500">Category</p>
-                <p className="font-semibold text-slate-900 mt-1">
-                  {selectedProduct.category || "General"}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
-                <p className="text-sm text-slate-500">Condition</p>
-                <p className="font-semibold text-slate-900 mt-1">
-                  {selectedProduct.condition || "New"}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
-                <p className="text-sm text-slate-500">Stock</p>
-                <p className="font-semibold text-slate-900 mt-1">
-                  {selectedProduct.stock || 0} available
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
-                <p className="text-sm text-slate-500">Fulfillment</p>
-                <p className="font-semibold text-slate-900 mt-1">
-                  {selectedProduct.deliveryMode === "delivery"
-                    ? "Local Delivery"
-                    : selectedProduct.deliveryMode === "pickup"
-                    ? "Pickup"
-                    : "Pickup"}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 md:col-span-2">
-                <p className="text-sm text-slate-500">Pickup Address</p>
-                <p className="font-semibold text-slate-900 mt-1">
-                  {selectedProduct.pickupAddress || "No pickup address provided."}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 md:col-span-2">
-                <p className="text-sm text-slate-500">Price</p>
-                <p className="text-2xl font-black text-slate-900 mt-1">
-                  ${(Number(selectedProduct.price) || 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </section>
         )}
       </section>
     </main>

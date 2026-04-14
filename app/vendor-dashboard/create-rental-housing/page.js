@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function CreateRentalHousingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const listingId = searchParams?.get("id");
+  const isEditMode = Boolean(listingId);
   const activeTab = "housing";
 
   const [formData, setFormData] = useState({
@@ -25,6 +28,44 @@ export default function CreateRentalHousingPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!listingId) return;
+
+    async function loadListing() {
+      try {
+        const listingDoc = await getDoc(doc(db, "listings", listingId));
+        if (!listingDoc.exists()) {
+          setError("Listing not found for editing.");
+          return;
+        }
+
+        const data = listingDoc.data();
+        if (data.type !== "rental" || data.subtype !== "housing") {
+          setError("This listing cannot be edited here.");
+          return;
+        }
+
+        setFormData({
+          title: data.title || "",
+          description: data.description || "",
+          nightlyRate: data.nightlyRate?.toString() || "",
+          weeklyRate: data.weeklyRate?.toString() || "",
+          bedrooms: data.bedrooms?.toString() || "",
+          bathrooms: data.bathrooms?.toString() || "",
+          guests: data.guests?.toString() || "",
+          address: data.address || "",
+          propertyType: data.propertyType || "Apartment",
+          availabilityNotes: data.availabilityNotes || "",
+        });
+      } catch (err) {
+        console.error("Load housing rental for edit error:", err);
+        setError("Unable to load the rental for editing.");
+      }
+    }
+
+    loadListing();
+  }, [listingId]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -45,7 +86,7 @@ export default function CreateRentalHousingPage() {
     try {
       setIsPublishing(true);
 
-      await addDoc(collection(db, "listings"), {
+      const listingData = {
         type: "rental",
         subtype: "housing",
         vendorId: user.uid,
@@ -61,10 +102,16 @@ export default function CreateRentalHousingPage() {
         propertyType: formData.propertyType,
         availabilityNotes: formData.availabilityNotes.trim(),
         status: "published",
-        createdAt: serverTimestamp(),
-      });
+        ...(isEditMode ? { updatedAt: serverTimestamp() } : { createdAt: serverTimestamp() }),
+      };
 
-      setMessage("Housing rental published successfully.");
+      if (isEditMode && listingId) {
+        await updateDoc(doc(db, "listings", listingId), listingData);
+        setMessage("Housing rental updated successfully.");
+      } else {
+        await addDoc(collection(db, "listings"), listingData);
+        setMessage("Housing rental published successfully.");
+      }
       setFormData({
         title: "",
         description: "",

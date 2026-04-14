@@ -1,13 +1,228 @@
 "use client";
 
+import Link from "next/link";
+import SiteHeader from "./components/SiteHeader";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "./utils/firebase";
+import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
+import { auth, db } from "./utils/firebase";
 
 export default function HomePage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [selectedPackageItems, setSelectedPackageItems] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const savedCart = window.localStorage.getItem("siraque_checkout_cart");
+    if (savedCart) {
+      const parsedCart = JSON.parse(savedCart);
+      setCart(parsedCart);
+      setCartCount(parsedCart.reduce((count, item) => count + (item.quantity || 1), 0));
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+    return unsubscribe;
+  }, []);
+
+  function saveCart(nextCart) {
+    window.localStorage.setItem("siraque_checkout_cart", JSON.stringify(nextCart));
+    setCart(nextCart);
+    setCartCount(nextCart.reduce((count, item) => count + (item.quantity || 1), 0));
+  }
+
+  function saveClickedItem(listing) {
+    const savedClicks = window.localStorage.getItem("siraque_saved_items");
+    const currentSaved = savedClicks ? JSON.parse(savedClicks) : [];
+    const nextSaved = [
+      {
+        id: listing.id,
+        title: listing.title || "Untitled item",
+        subtitle: listing.subtype || listing.type || "Listing",
+        price: Number(listing.price) || 0,
+        type: listing.type || "item",
+        image: listing.image || listing.photoURL || "",
+        clickedAt: new Date().toISOString(),
+      },
+      ...currentSaved.filter((item) => item.id !== listing.id),
+    ].slice(0, 20);
+
+    window.localStorage.setItem("siraque_saved_items", JSON.stringify(nextSaved));
+  }
+
+  function getListingItemKey(item, index, listingId) {
+    return item.id || item.name || item.title || `${listingId || "package"}-service-${index}`;
+  }
+
+  function initializePackageSelection(listing) {
+    if (listing?.subtype !== "package" || !Array.isArray(listing.services)) {
+      setSelectedPackageItems([]);
+      return;
+    }
+
+    const selectedKeys = listing.services
+      .slice(0, Math.min(2, listing.services.length))
+      .map((item, index) => getListingItemKey(item, index, listing.id));
+
+    setSelectedPackageItems(selectedKeys);
+  }
+
+  function togglePackageItem(itemKey) {
+    setSelectedPackageItems((current) =>
+      current.includes(itemKey)
+        ? current.filter((key) => key !== itemKey)
+        : [...current, itemKey]
+    );
+  }
+
+  function getPackageListingItems(listing) {
+    return Array.isArray(listing?.services)
+      ? listing.services.map((item, index) => ({
+          ...item,
+          key: getListingItemKey(item, index, listing.id),
+        }))
+      : [];
+  }
+
+  function getPackageSelectedTotal(listing) {
+    return getPackageListingItems(listing)
+      .filter((item) => selectedPackageItems.includes(item.key))
+      .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+  }
+
+  async function handleSelectListing(listing) {
+    setSelectedListing(listing);
+    saveClickedItem(listing);
+    initializePackageSelection(listing);
+
+    if (!user) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "listings", listing.id), {
+        clicks: increment(1),
+      });
+    } catch (err) {
+      console.error("Listing click tracking failed:", err);
+    }
+  }
+
+  function handleAddToCart(event, listing) {
+    event.stopPropagation();
+
+    setCart((currentCart) => {
+      if (listing.subtype === "package" && Array.isArray(listing.services)) {
+        const packageItems = getPackageListingItems(listing);
+        const selectedItems = packageItems.filter((item) => selectedPackageItems.includes(item.key));
+        const selectedCount = selectedItems.length;
+
+        if (selectedCount < 2) {
+          return currentCart;
+        }
+
+        const totalPrice = selectedItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+        const nextCart = [
+          ...currentCart.filter((item) => item.id !== listing.id),
+          {
+            id: listing.id,
+            title: `${listing.title || "Package"} (${selectedCount} services)`,
+            price: totalPrice,
+            vendorId: listing.vendorId || "",
+            type: listing.type,
+            subtype: listing.subtype,
+            quantity: selectedCount,
+            packageItems: selectedItems.map(({ key, ...item }) => item),
+            packageTotal: totalPrice,
+          },
+        ];
+
+        saveCart(nextCart);
+        return nextCart;
+      }
+
+      const existingItem = currentCart.find((item) => item.id === listing.id);
+      const nextCart = existingItem
+        ? currentCart.map((item) =>
+            item.id === listing.id
+              ? { ...item, quantity: (item.quantity || 1) + 1 }
+              : item
+          )
+        : [
+            ...currentCart,
+            {
+              id: listing.id,
+              title: listing.title || "Untitled item",
+              price: Number(listing.price) || 0,
+              vendorId: listing.vendorId || "",
+              type: listing.type,
+              subtype: listing.subtype,
+              quantity: 1,
+            },
+          ];
+
+      saveCart(nextCart);
+      return nextCart;
+    });
+  }
+
+  function getUserInitial() {
+    if (!user) return "U";
+    if (user.photoURL) return "";
+    const email = user.email || "";
+    return email[0]?.toUpperCase() || "U";
+  }
+
+  const filteredListings = listings.filter((listing) => {
+    if (!searchQuery.trim()) return true;
+    const lowerQuery = searchQuery.toLowerCase();
+    return [
+      listing.title,
+      listing.description,
+      listing.type,
+      listing.subtype,
+      listing.category,
+      listing.condition,
+      listing.deliveryMode,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toString().toLowerCase().includes(lowerQuery));
+  });
+
+  function getListingTag(listing) {
+    if (listing.type === "product") return "Product";
+    if (listing.type === "rental") return "Rental";
+    if (listing.subtype === "package") return "Package";
+    return "Service";
+  }
+
+  function getDetailLabel(listing) {
+    if (listing.type === "product") return `${listing.stock || 0} in stock`;
+    if (listing.type === "rental") return listing.deliveryMode || "Pickup";
+    if (listing.subtype === "package") return `${listing.totalDuration || 0}m total`;
+    return `${listing.duration || 0}m session`;
+  }
+
+  function getSecondaryLabel(listing) {
+    if (listing.type === "product") return listing.deliveryMode || "Remote";
+    if (listing.type === "rental") return listing.subtype || "Rental";
+    return listing.subtype === "package" ? "Package" : "Service";
+  }
+
+  function getDeliveryText(listing) {
+    if (listing.type === "product") return listing.deliveryMode || "Remote";
+    if (listing.type === "rental") return listing.location || listing.pickupLocation || "Pickup location";
+    return listing.deliveryMode || "Remote";
+  }
 
   useEffect(() => {
     async function fetchServices() {
@@ -41,50 +256,13 @@ export default function HomePage() {
 
   return (
     <main className="bg-[#f9f9fb] text-[#2d3338] min-h-screen">
-      <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl">
-        <nav className="max-w-screen-2xl mx-auto px-10 flex justify-between items-center h-20">
-          <div className="flex items-center gap-12">
-            <a href="#" className="text-2xl font-bold tracking-tighter text-slate-900">
-              Siraque
-            </a>
-
-            <div className="hidden md:flex items-center gap-8 tracking-tight">
-              <a href="/products" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
-                Products
-              </a>
-              <a href="/services" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
-                Services
-              </a>
-              <a href="#" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
-                Rentals
-              </a>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden lg:flex items-center bg-slate-100 px-4 py-2 rounded-full border border-slate-200">
-              <span className="mr-2 text-slate-500"></span>
-              <input
-                type="text"
-                placeholder="Find anything..."
-                className="bg-transparent border-none outline-none text-sm w-48"
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                Notifications
-              </button>
-              <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                Checkout
-              </button>
-              <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 font-semibold">
-                U
-              </div>
-            </div>
-          </div>
-        </nav>
-      </header>
+      <SiteHeader
+        activePage=""
+        searchQuery={searchQuery}
+        onSearch={setSearchQuery}
+        showSearch
+        searchPlaceholder="Search products, services, rentals..."
+      />
 
       <section className="relative min-h-screen flex items-center overflow-hidden pt-20 bg-[#f9f9fb]">
         <div className="max-w-screen-2xl mx-auto px-10 w-full grid grid-cols-12 gap-10 z-10">
@@ -108,17 +286,21 @@ export default function HomePage() {
                 <span className="text-orange-600 mr-3"></span>
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products, services, or rentals..."
                   className="w-full border-none outline-none text-slate-900 text-lg py-3 bg-transparent"
                 />
               </div>
 
-              <button className="bg-orange-600 text-white px-8 py-4 rounded-[1rem] font-semibold hover:bg-orange-700 transition-all duration-300">
-                Discover
+              <button
+                type="button"
+                onClick={() => {}}
+                className="bg-orange-600 text-white px-8 py-4 rounded-[1rem] font-semibold hover:bg-orange-700 transition-all duration-300"
+              >
+                Explore marketplace
               </button>
             </div>
-
-            
           </div>
 
           <div className="hidden lg:block col-span-5 relative">
@@ -149,26 +331,29 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-20 bg-[#f9f9fb]">
+       <section className="py-20 bg-[#f9f9fb]">
         <div className="max-w-screen-2xl mx-auto px-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
             <div>
               <span className="text-xs font-bold tracking-[0.2em] uppercase text-orange-600 mb-4 block">
-                Live Services
+                Live Listings
               </span>
               <h2 className="text-[2.5rem] font-bold tracking-tight text-slate-900">
-                Published listings from our marketplace
+                Published products, services, and rentals
               </h2>
             </div>
 
-            <a href="/services" className="text-orange-600 font-semibold flex items-center gap-2 hover:gap-4 transition-all duration-300">
-              View all services <span>→</span>
+            <a
+              href="/services"
+              className="text-orange-600 font-semibold flex items-center gap-2 hover:gap-4 transition-all duration-300"
+            >
+              View marketplace <span>→</span>
             </a>
           </div>
 
           {loading && (
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
-              Loading services...
+              Loading listings...
             </div>
           )}
 
@@ -178,68 +363,305 @@ export default function HomePage() {
             </div>
           )}
 
-          {!loading && !error && listings.length === 0 && (
+          {!loading && !error && filteredListings.length === 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
-              No published services available right now.
+              No listings match your search. Try another keyword or category.
             </div>
           )}
 
-          {!loading && !error && listings.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {listings.map((listing) => {
-                const listingType =
-                  listing.type === "product"
-                    ? "Product"
-                    : listing.subtype === "package"
-                    ? "Package"
-                    : "Service";
+          {!loading && !error && filteredListings.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                {filteredListings.flatMap((listing) => {
+                  const inCart = cart.some((item) => item.id === listing.id);
 
-                const durationLabel =
-                  listing.type === "product"
-                    ? `${listing.stock || 0} in stock`
-                    : listing.duration
-                    ? `${listing.duration}m session`
-                    : listing.totalDuration
-                    ? `${listing.totalDuration}m session`
-                    : "Duration not set";
+                  const card = (
+                    <div
+                      key={listing.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectListing(listing)}
+                      className={`bg-white rounded-[2rem] border shadow-sm hover:shadow-xl transition-all duration-300 ${
+                        selectedListing?.id === listing.id
+                          ? "border-orange-500 ring-1 ring-orange-200"
+                          : "border-slate-200"
+                      } cursor-pointer h-full`}
+                    >
+                      <div className="p-8 flex h-full flex-col gap-5">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
+                              {getListingTag(listing)}
+                            </p>
+                            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                              {listing.title || "Untitled Listing"}
+                            </h2>
+                          </div>
+                          <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
+                            LIVE
+                          </span>
+                        </div>
 
-                return (
-                  <div
-                    key={listing.id}
-                    className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 hover:shadow-xl transition-all duration-300"
-                  >
-                    <span className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                      {listingType}
-                    </span>
-                    <h3 className="mt-4 text-2xl font-bold text-slate-900">
-                      {listing.title || "Untitled listing"}
-                    </h3>
-                    <p className="mt-4 text-sm text-slate-500 line-clamp-3">
-                      {listing.description || "No description available."}
-                    </p>
+                        <p className="text-sm text-slate-500 line-clamp-2">
+                          {listing.description || "No description available."}
+                        </p>
 
-                    <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-500">
-                      <span className="rounded-full bg-slate-100 px-3 py-2">
-                        {durationLabel}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-3 py-2">
-                        {listing.price ? `$${listing.price}` : "$0.00"}
-                      </span>
-                    </div>
+                        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">Details</span>
+                            <span>{getDetailLabel(listing)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">Type</span>
+                            <span>{getSecondaryLabel(listing)}</span>
+                          </div>
+                        </div>
 
-                    <div className="mt-6 flex items-center justify-between gap-4 text-sm text-slate-600">
-                      <div>
-                        <p className="font-semibold text-slate-900">{listing.vendorName || "Vendor"}</p>
-                        <p>{listing.category || "Service"}</p>
+                        <div className="mt-auto text-3xl font-black text-slate-900">
+                          ${(Number(listing.price) || 0).toFixed(2)}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(event) => handleAddToCart(event, listing)}
+                          className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
+                        >
+                          {inCart ? "Add another" : "Add to Cart"}
+                        </button>
                       </div>
-                      <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        Published
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+
+                  if (selectedListing?.id !== listing.id) {
+                    return [card];
+                  }
+
+                  return [
+                    card,
+                    <div key={`${listing.id}-details`} className="col-span-full">
+                      <section className="mt-12 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-orange-600 text-lg">📦</span>
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
+                                  {getListingTag(selectedListing)} Details
+                                </p>
+                                <h2 className="text-2xl font-bold text-slate-900">
+                                  {selectedListing.title || "Selected Listing"}
+                                </h2>
+                              </div>
+                            </div>
+
+                            <p className="text-slate-600 max-w-3xl">
+                              {selectedListing.description || "This listing includes the selected details."}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleAddToCart(event, selectedListing);
+                              }}
+                              disabled={
+                                selectedListing.subtype === "package" && selectedPackageItems.length < 2
+                              }
+                              className="rounded-full bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {selectedListing.subtype === "package"
+                                ? selectedPackageItems.length >= 2
+                                  ? `Add ${selectedPackageItems.length} services to Cart`
+                                  : "Select at least 2 services"
+                                : "Add to Cart"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedListing(null);
+                                setSelectedPackageItems([]);
+                              }}
+                              className="self-start rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
+                            >
+                              Close details
+                            </button>
+                          </div>
+                        </div>
+
+                        {selectedListing.type === "service" &&
+                        selectedListing.subtype === "package" ? (
+                          <div className="mt-8 space-y-6">
+                            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                              <p className="text-sm text-slate-500">
+                                Select at least 2 services from this package. Only selected services will be added to cart.
+                              </p>
+                              <p className="mt-3 text-sm text-slate-700">
+                                Selected: <span className="font-semibold text-slate-900">{selectedPackageItems.length}</span> /{' '}
+                                <span className="font-semibold text-slate-900">{Array.isArray(selectedListing.services) ? selectedListing.services.length : 0}</span>
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-orange-600">
+                                Total selected price: <span>${getPackageSelectedTotal(selectedListing).toFixed(2)}</span>
+                              </p>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                              {Array.isArray(selectedListing.services) && selectedListing.services.length > 0 ? (
+                                getPackageListingItems(selectedListing).map((item, index) => {
+                                  const selected = selectedPackageItems.includes(item.key);
+                                  return (
+                                    <button
+                                      key={item.key}
+                                      type="button"
+                                      onClick={() => togglePackageItem(item.key)}
+                                      className={`rounded-3xl border p-5 text-left transition-all ${
+                                        selected
+                                          ? 'border-orange-500 bg-orange-50'
+                                          : 'border-slate-200 bg-slate-50'
+                                      }`}
+                                    >
+                                      <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                          <p className="font-semibold text-slate-900">{item.name || item.title || `Service ${index + 1}`}</p>
+                                          <p className="text-sm text-slate-500 mt-1">{item.description || 'No description'}</p>
+                                        </div>
+                                        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold ${
+                                          selected
+                                            ? 'border-orange-600 bg-orange-600 text-white'
+                                            : 'border-slate-300 text-slate-400'
+                                        }`}>
+                                          {selected ? '✓' : index + 1}
+                                        </span>
+                                      </div>
+
+                                      <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                                        <span>{item.duration || 0}m</span>
+                                        <span>${(Number(item.price) || 0).toFixed(2)}</span>
+                                      </div>
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
+                                  No package items are available for this selection.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : selectedListing.type === "product" ? (
+                          <div className="mt-8 grid gap-4 md:grid-cols-2">
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                              <p className="text-sm text-slate-500">Category</p>
+                              <p className="font-semibold text-slate-900 mt-1">
+                                {selectedListing.category || "General"}
+                              </p>
+                            </div>
+
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                              <p className="text-sm text-slate-500">Condition</p>
+                              <p className="font-semibold text-slate-900 mt-1">
+                                {selectedListing.condition || "New"}
+                              </p>
+                            </div>
+
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                              <p className="text-sm text-slate-500">Stock</p>
+                              <p className="font-semibold text-slate-900 mt-1">
+                                {selectedListing.stock || 0} available
+                              </p>
+                            </div>
+
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                              <p className="text-sm text-slate-500">Delivery</p>
+                              <p className="font-semibold text-slate-900 mt-1">
+                                {getDeliveryText(selectedListing)}
+                              </p>
+                            </div>
+                          </div>
+                        ) : selectedListing.type === "rental" ? (
+                          <div className="mt-8 grid gap-4 md:grid-cols-2">
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                              <p className="text-sm text-slate-500">Rental Category</p>
+                              <p className="font-semibold text-slate-900 mt-1">
+                                {selectedListing.subtype === "equipment"
+                                  ? "Equipment"
+                                  : selectedListing.subtype === "housing"
+                                  ? "Housing"
+                                  : selectedListing.subtype === "vehicle"
+                                  ? "Vehicle"
+                                  : "Rental"}
+                              </p>
+                            </div>
+
+                            <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                              <p className="text-sm text-slate-500">Pickup / Location</p>
+                              <p className="font-semibold text-slate-900 mt-1">
+                                {getDeliveryText(selectedListing)}
+                              </p>
+                            </div>
+
+                            {selectedListing.subtype === "equipment" && (
+                              <>
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                                  <p className="text-sm text-slate-500">Condition</p>
+                                  <p className="font-semibold text-slate-900 mt-1">
+                                    {selectedListing.condition || "Good"}
+                                  </p>
+                                </div>
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                                  <p className="text-sm text-slate-500">Quantity</p>
+                                  <p className="font-semibold text-slate-900 mt-1">
+                                    {selectedListing.quantity || 0} units
+                                  </p>
+                                </div>
+                              </>
+                            )}
+
+                            {selectedListing.subtype === "housing" && (
+                              <>
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                                  <p className="text-sm text-slate-500">Property Type</p>
+                                  <p className="font-semibold text-slate-900 mt-1">
+                                    {selectedListing.propertyType || "Housing"}
+                                  </p>
+                                </div>
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                                  <p className="text-sm text-slate-500">Guest Capacity</p>
+                                  <p className="font-semibold text-slate-900 mt-1">
+                                    {selectedListing.guests || 0} guests
+                                  </p>
+                                </div>
+                              </>
+                            )}
+
+                            {selectedListing.subtype === "vehicle" && (
+                              <>
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                                  <p className="text-sm text-slate-500">Vehicle</p>
+                                  <p className="font-semibold text-slate-900 mt-1">
+                                    {`${selectedListing.make || ""} ${selectedListing.model || ""}`.trim() || "Vehicle"}
+                                  </p>
+                                </div>
+                                <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                                  <p className="text-sm text-slate-500">Seats</p>
+                                  <p className="font-semibold text-slate-900 mt-1">
+                                    {selectedListing.seats || 0} seats
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-8 rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
+                            This is a single service. Use the details above to learn more about the offering.
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  ];
+                })}
+              </div>
+            </>
           )}
         </div>
       </section>
