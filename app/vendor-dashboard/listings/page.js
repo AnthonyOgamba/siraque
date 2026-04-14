@@ -72,7 +72,7 @@ export default function VendorListingsPage() {
           </span>
         </div>
 
-        <p className="text-sm text-slate-500 line-clamp-3 mb-4">
+        <p className="text-sm text-slate-500 line-clamp-2 mb-4">
           {item.description || "No description provided."}
         </p>
 
@@ -112,6 +112,13 @@ export default function VendorListingsPage() {
           <div>
             <p className="text-xs uppercase tracking-[0.3em] font-bold text-orange-600">Vendor Listings</p>
             <h1 className="text-3xl font-bold text-slate-900 mt-2">Manage your listings</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              {userId ? (
+                <>Logged in as vendor <span className="font-semibold text-slate-900">{userId.slice(0, 6)}…</span></>
+              ) : (
+                <>Sign in to view your saved listings.</>
+              )}
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link

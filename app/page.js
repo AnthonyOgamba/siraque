@@ -1,6 +1,44 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "./utils/firebase";
+
 export default function HomePage() {
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function fetchServices() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const listingsRef = collection(db, "listings");
+        const listingsQuery = query(
+          listingsRef,
+          where("status", "==", "published")
+        );
+
+        const snapshot = await getDocs(listingsQuery);
+        const listingsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setListings(listingsData);
+      } catch (err) {
+        console.error("HomePage fetch services error:", err);
+        setError("Unable to load published services at the moment.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchServices();
+  }, []);
+
   return (
     <main className="bg-[#f9f9fb] text-[#2d3338] min-h-screen">
       <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl">
@@ -11,10 +49,10 @@ export default function HomePage() {
             </a>
 
             <div className="hidden md:flex items-center gap-8 tracking-tight">
-              <a href="#" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
+              <a href="/products" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
                 Products
               </a>
-              <a href="#" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
+              <a href="/services" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
                 Services
               </a>
               <a href="#" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
@@ -35,17 +73,13 @@ export default function HomePage() {
 
             <div className="flex items-center gap-4">
               <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                ✉️
+                Notifications
               </button>
               <button className="text-slate-600 hover:text-orange-600 transition-colors duration-300">
-                🛒
+                Checkout
               </button>
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 hover:border-orange-600 transition-all cursor-pointer">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEksb-bc8PqnKCwYIuCp5Wy95NPV7rDp1bLwfzg-1iekYB_9omIS9W-Ota_OuhYiQxqC1NYnRKqoTCiUGkwegrq74f4WJGoiNNN_JtH-GtT70hXnrdRiD0jJyiz946pANAKUfHYhIFUH_cRlaYkwp1sXiyLZ3PCAWsx2SoyxUjVDZT9SnAUW9qza5M55c-LgVYLnni3NybDONX5i6xpaWY7ItPRJUY_O0qse194wsp69cGiPKtEHWPuZetaUWiM2p4q6S49nGBYbJk"
-                  alt="User profile"
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 font-semibold">
+                U
               </div>
             </div>
           </div>
@@ -84,29 +118,7 @@ export default function HomePage() {
               </button>
             </div>
 
-            <div className="flex gap-8 mt-12 items-center">
-              <div className="flex -space-x-3">
-                <img
-                  className="w-10 h-10 rounded-full border-2 border-white"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-9_s2IwwI1_LatEY6gZ_zCGjIdR3He8SOafuAsSzClDoNnzwuBeP-GxIXdlkv0g6-C35w3XQfyLxr8kLrZr50NddH0m7jHUWE0aADxNjWZVnzQtDEwsmnWPFwL6G3sUimn0TfD_uzpwfNvhLwvrABb7DDFXh8UHC6jAvw3ytPLRZb7KPXeVGTwXg75-ZYJJ8R9NksFDxgkDMQdOJTJCsWwpENfHELB_dj8_ZnCRBOyIdWeh5ceWUlXvg0NqNiE8uY0LhozV8ZC-Pe"
-                  alt="User 1"
-                />
-                <img
-                  className="w-10 h-10 rounded-full border-2 border-white"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuArYs70FpB1sHwaUhQqiAgEDmI8xgXbUcaE2rVtd5hxXokpg0G8ZYXh4CxlXG0yTLoQyDI-L8b9wiSXnfozt6XjFeEaqEPf6wX_R8bnM1oavc6MHP4-N8wnP1Ytdz53GY2WZ0nM0IPTykjxULMauYkgcVQgdHgDGPD2qzQFwzBiUC4XJMQkZB3aI6-d1i2Das33pVf_RjMa9_a-G6z-BcBu4Uxek8k8x3r5lDNV4Pm9nILsrhzKM4KRw8ILJY9ozXbQdeyNUGvqhlBM"
-                  alt="User 2"
-                />
-                <img
-                  className="w-10 h-10 rounded-full border-2 border-white"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV7mmNgXEa4pYRzWPf2oALf8jZR5BSB_yYA0pr5_hFVk4A0bfO_banlNskDa8sKzxKD5Hxvx-qD-c98Ip9AsAaDD_1O4IDsDNgCthWiY7oY9YfJQb3Ulmz4lWLv1Memgkgu-wiwoOwhoOBHtIUt1LbZQtdVX5RNvtnxL2N_9bNdCxuKzEoUiDT5RYqgC1BskpEXKpw5p-rz3T86lr7mScRUVebrUa0ZVg-g3ezmMFApHpH2WnYg7bIQzBJZH8ApbgL81IfgxfCMV8n"
-                  alt="User 3"
-                />
-              </div>
-
-              <p className="text-sm text-slate-600 font-medium">
-                Joined by 10k+ active users globally
-              </p>
-            </div>
+            
           </div>
 
           <div className="hidden lg:block col-span-5 relative">
@@ -137,86 +149,98 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-32 bg-[#f9f9fb]">
+      <section className="py-20 bg-[#f9f9fb]">
         <div className="max-w-screen-2xl mx-auto px-10">
-          <div className="flex justify-between items-end mb-16">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
             <div>
               <span className="text-xs font-bold tracking-[0.2em] uppercase text-orange-600 mb-4 block">
-                Curated Collection
+                Live Services
               </span>
               <h2 className="text-[2.5rem] font-bold tracking-tight text-slate-900">
-                Featured Products
+                Published listings from our marketplace
               </h2>
             </div>
 
-            <a href="#" className="text-orange-600 font-semibold flex items-center gap-2 hover:gap-4 transition-all duration-300">
-              View All Marketplace <span>→</span>
+            <a href="/services" className="text-orange-600 font-semibold flex items-center gap-2 hover:gap-4 transition-all duration-300">
+              View all services <span>→</span>
             </a>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                title: "SonicFlow Studio Gen 3",
-                description:
-                  "Immersive sound technology with active noise cancellation and 40-hour battery life.",
-                price: "$299.00",
-                image:
-                  "https://lh3.googleusercontent.com/aida-public/AB6AXuCfnjbS9C5otfHCuJADyA7KwHogB4Ff709H0rVy2-ZbpkIkJm50_PJQNxF5iG8GsS2z-Ty8mqb-GyeUz5i-OxufExVicmEeN3JqjjPrSNP5usgoqRo5gkgibIt8uL8yNN8LsUT6Doi9wAbm4iq0ZFhR9QYOmGfdDLZAFRqeGMCJldBmhQfZIloAhBlYFduJy2EEQfl7ZSy3igA_Pq0ntOA-BNT2_3Po-K1K702cy_38KvFPGrTZHUYXw9npJWmZwxFUGJNf-Qq6t_pA",
-              },
-              {
-                title: "AeroPace Running Pro",
-                description:
-                  "Lightweight breathable mesh design with responsive cushioning for elite athletes.",
-                price: "$145.00",
-                image:
-                  "https://lh3.googleusercontent.com/aida-public/AB6AXuAwvSHsCmIPaDCa2Ur4sV0KzEDF5ApWj7cdRjKxcjznY1EKF2YhtlsEAX6RLgyApIhzU_A6mQCLF0SWoMmgl7RF6UU9FxXqL_8Sk5WWPcKpiGMpakpLRS5AX0ac-TQU0VIrQ8RiaPQNvAW0QQGg9QcTmLBAlwUDVjLkwYLS8eza_uU7vOScXlfMfECzIYvaU8_qjGZQvRpXk-rZdilEfP7aOuXh-pkFKdzpVHgDtG8Q5AyxLWg4wMRe0jKBJ8iwo29t3HU9SXuGHvIC",
-              },
-              {
-                title: "Vintage Frame Camera",
-                description:
-                  "Analog aesthetics with digital precision. Captured memories in high fidelity.",
-                price: "$890.00",
-                image:
-                  "https://lh3.googleusercontent.com/aida-public/AB6AXuDlBQ4VBZIfXD3Sta7rYpYo9-fidKjQ3H0oRfyIfMwWOMuN3N1gCqZ5HJPCgEMnOIUa8vXzMWyK7YXS3k38W9Ihq0wEUHAVdvqMvGgtrZgdeZqh3p_ooiWHhlpn8LL0tGuIt_yVD7dGmdf1EQpZqlM7bLIxUNCtN2xXgiHcdgJdJOl25zL8ecHB4iFLaiu3JNqTf0xb0drtztHrbwLz1Z51ZdCnUth9_i_cc-IooK4TL3j8hmqN8ZY-lIIEOX3zsLp82O2m2n8-LI8Q",
-              },
-              {
-                title: "Nordic Amber Candle",
-                description:
-                  "Soy-based luxury candle with notes of sandalwood, cedar, and spiced citrus.",
-                price: "$32.00",
-                image:
-                  "https://lh3.googleusercontent.com/aida-public/AB6AXuD15p0CLc4p9tYsDyaPx-9CozS21svmFBVyCGt3x72WRncHhq3Sx1DPD4EWsqXl7FNYhU2K96tYfbm4vCvKuQbBBv6cD7FavEpErNA_LLbIPXaOXY7MKh6hMGirVb4jzYz6EfPs4JHj6Ow0vbDS92TlUsr0I-b3Mf1ZMNJWSPnkNVYKLQnhjS4cAkNwa0RyuRBMoqU7gfp1bJY9bPqaPhHCyr9WIo_RM-RqA3S_2NbSzxxeRUcF2Z2MPPYuLYop0eeULOxnaI6ONYib",
-              },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="group bg-white rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(12,14,16,0.03)] border border-slate-200 hover:shadow-[0_12px_40px_rgba(230,81,0,0.08)] transition-all duration-300"
-              >
-                <div className="aspect-square relative overflow-hidden bg-slate-100">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm">
-                    <span className="text-slate-400 group-hover:text-orange-600 transition-colors">♥</span>
-                  </div>
-                </div>
+          {loading && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
+              Loading services...
+            </div>
+          )}
 
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">{item.title}</h3>
-                  <p className="text-sm text-slate-600 mb-6 line-clamp-2">{item.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold text-slate-900">{item.price}</span>
-                    <button className="text-orange-600 font-bold text-sm hover:opacity-80">
-                      Shop Now
-                    </button>
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-700">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && listings.length === 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
+              No published services available right now.
+            </div>
+          )}
+
+          {!loading && !error && listings.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            {listings.map((listing) => {
+                const listingType =
+                  listing.type === "product"
+                    ? "Product"
+                    : listing.subtype === "package"
+                    ? "Package"
+                    : "Service";
+
+                const durationLabel =
+                  listing.type === "product"
+                    ? `${listing.stock || 0} in stock`
+                    : listing.duration
+                    ? `${listing.duration}m session`
+                    : listing.totalDuration
+                    ? `${listing.totalDuration}m session`
+                    : "Duration not set";
+
+                return (
+                  <div
+                    key={listing.id}
+                    className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 hover:shadow-xl transition-all duration-300"
+                  >
+                    <span className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
+                      {listingType}
+                    </span>
+                    <h3 className="mt-4 text-2xl font-bold text-slate-900">
+                      {listing.title || "Untitled listing"}
+                    </h3>
+                    <p className="mt-4 text-sm text-slate-500 line-clamp-3">
+                      {listing.description || "No description available."}
+                    </p>
+
+                    <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-500">
+                      <span className="rounded-full bg-slate-100 px-3 py-2">
+                        {durationLabel}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-2">
+                        {listing.price ? `$${listing.price}` : "$0.00"}
+                      </span>
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-between gap-4 text-sm text-slate-600">
+                      <div>
+                        <p className="font-semibold text-slate-900">{listing.vendorName || "Vendor"}</p>
+                        <p>{listing.category || "Service"}</p>
+                      </div>
+                      <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
+                        Published
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

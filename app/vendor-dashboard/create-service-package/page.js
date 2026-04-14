@@ -16,9 +16,6 @@ export default function CreateServicePackagePage() {
   const publishButtonText = "Publish Package";
 
   const [deliveryMode, setDeliveryMode] = useState("studio");
-  const [previewImage, setPreviewImage] = useState(
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuDSQVcUjBJaU7zIBuGzKz028MI-L3Vy9eNAdMF7ogGmIgkvCeUhkbMjOiCx_Q3ZUG8OXSP7vFqBAGED5zKxcIi42vjWF6zC3cpZcaId5pUtflYF0jmAHe-Yyjl5DR33XIXO06BVpWusewJz2bxVFN85DxqRL1gcL7cu-E7r2A8KlAGxEnL_XOn4eUAASPb0WYLuZVkTpAZyzRuSShwX16IS2jkEV5Pto52XUCY5BsKbT_ueGaOVvdtiGpuudX8ZXE8OyZzf7yf5yDvq"
-  );
 
   const [formData, setFormData] = useState({
     packageTitle: "",
@@ -54,14 +51,6 @@ export default function CreateServicePackagePage() {
       ...prev,
       [name]: value,
     }));
-  }
-
-  function handleImageUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const localUrl = URL.createObjectURL(file);
-    setPreviewImage(localUrl);
   }
 
   function handleServiceChange(id, field, value) {
@@ -178,7 +167,6 @@ export default function CreateServicePackagePage() {
         deliveryMode,
         studioAddress:
           deliveryMode === "studio" ? formData.studioAddress.trim() : "",
-        imageUrl: previewImage,
         services: validServices.map((service) => ({
           name: service.name.trim(),
           description: service.description.trim(),
@@ -256,12 +244,8 @@ export default function CreateServicePackagePage() {
           <button className="p-2 text-slate-500 hover:text-orange-600 transition-colors">
             <span>❓</span>
           </button>
-          <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-200">
-            <img
-              className="h-full w-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3ANnfXVlZA1cbnUDx8K6VGIKfYJp9y0Hz4l8gDhDi4SOXc1sLbrcW9XFfeG8iu4GMeDZefBnBDfjmRGBXMYUEvIYbk9lS_gHbZ5qhoeFnKlt14a2KCKtNiEB8vGPG6H74rI3c_JPGmRoNOGzjeAzH2IvTDEnFzpGxd75mdzGVrvVWol-DYx4vHe_qCRLFiygrhRRVxIOai8eujuePR5D5nWsjtwPEYOlpoStxkKN-F4xsdlfoSzgO1kzaqojIyUYp0g0NUXVUOZI5"
-              alt="Vendor avatar"
-            />
+          <div className="h-8 w-8 rounded-full bg-orange-100 border border-slate-200 flex items-center justify-center text-orange-600">
+            <span className="text-sm">👤</span>
           </div>
         </div>
       </nav>
@@ -395,41 +379,6 @@ export default function CreateServicePackagePage() {
 
         <div className="grid grid-cols-12 gap-10">
           <div className="col-span-8 space-y-16">
-            <section className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="w-1 h-8 bg-orange-600 rounded-full"></div>
-                <h3 className="text-xl font-semibold tracking-tight">
-                  Service Cover Image
-                </h3>
-              </div>
-
-              <div className="relative group">
-                <div className="w-full h-64 border-2 border-dashed border-slate-300 rounded-3xl bg-slate-100 flex flex-col items-center justify-center gap-4 transition-all hover:border-orange-400 hover:bg-orange-50">
-                  <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-orange-600 transition-colors">
-                    <span className="text-4xl">📷</span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-slate-900 font-semibold">
-                      Drag and drop your cover image here
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Recommended size: 1200x800px. Max 5MB.
-                    </p>
-                  </div>
-
-                  <label className="mt-2 px-8 py-3 rounded-xl font-bold text-white bg-orange-600 shadow-md hover:bg-orange-700 transition-all cursor-pointer">
-                    Upload from Computer
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-            </section>
-
             <section className="space-y-8">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-8 bg-orange-600 rounded-full"></div>
@@ -734,14 +683,15 @@ export default function CreateServicePackagePage() {
 
           <div className="col-span-4 sticky top-20 h-fit space-y-8 -mt-2">
             <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden border border-slate-200">
-              <div className="h-56 relative overflow-hidden">
-                <img
-                  className="w-full h-full object-cover"
-                  src={previewImage}
-                  alt="Package preview"
-                />
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-bold text-orange-600 shadow-sm">
-                  PREVIEW
+              <div className="h-56 bg-orange-50 flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="text-4xl">🧩</div>
+                  <p className="text-sm font-semibold text-slate-700">
+                    Package preview
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Your package details will appear here after publishing.
+                  </p>
                 </div>
               </div>
 

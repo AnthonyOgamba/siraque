@@ -5,62 +5,46 @@ import Link from "next/link";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../utils/firebase";
 
-export default function ServicesPage() {
-  const [services, setServices] = useState([]);
+export default function ProductsPage() {
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  function handleSelectService(service) {
-    setSelectedService(service);
+  function handleSelectProduct(product) {
+    setSelectedProduct(product);
   }
 
-  async function fetchServices() {
-    console.log("ServicesPage: fetchServices start");
+  async function fetchProducts() {
     try {
       setLoading(true);
       setError("");
 
       const listingsRef = collection(db, "listings");
-      const servicesQuery = query(
+      const productsQuery = query(
         listingsRef,
-        where("type", "==", "service"),
+        where("type", "==", "product"),
         where("status", "==", "published")
       );
 
-      console.log("ServicesPage: running query", {
-        collection: "listings",
-        filters: [
-          { field: "type", op: "==", value: "service" },
-          { field: "status", op: "==", value: "published" },
-        ],
-      });
+      const snapshot = await getDocs(productsQuery);
 
-      const snapshot = await getDocs(servicesQuery);
-      console.log("ServicesPage: snapshot received", {
-        size: snapshot.size,
-        docs: snapshot.docs.map((doc) => doc.id),
-      });
-
-      const servicesData = snapshot.docs.map((doc) => ({
+      const productsData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      console.log("SERVICES DATA:", servicesData);
-
-      setServices(servicesData);
+      setProducts(productsData);
     } catch (err) {
-      console.error("Fetch services error:", err.code, err.message, err);
-      setError(`Failed to load services: ${err.message}`);
+      console.error("Fetch products error:", err.code, err.message, err);
+      setError(`Failed to load products: ${err.message}`);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    console.log("ServicesPage: useEffect mount");
-    fetchServices();
+    fetchProducts();
   }, []);
 
   return (
@@ -75,13 +59,13 @@ export default function ServicesPage() {
             <div className="hidden md:flex items-center gap-8 tracking-tight">
               <Link
                 href="/products"
-                className="text-slate-600 hover:text-orange-600 transition-all duration-300"
+                className="text-orange-600 font-semibold transition-all duration-300"
               >
                 Products
               </Link>
               <Link
                 href="/services"
-                className="text-orange-600 font-semibold transition-all duration-300"
+                className="text-slate-600 hover:text-orange-600 transition-all duration-300"
               >
                 Services
               </Link>
@@ -111,11 +95,9 @@ export default function ServicesPage() {
                 Checkout
               </button>
               <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 hover:border-orange-600 transition-all cursor-pointer">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-9_s2IwwI1_LatEY6gZ_zCGjIdR3He8SOafuAsSzClDoNnzwuBeP-GxIXdlkv0g6-C35w3XQfyLxr8kLrZr50NddH0m7jHUWE0aADxNjWZVnzQtDEwsmnWPFwL6G3sUimn0TfD_uzpwfNvhLwvrABb7DDFXh8UHC6jAvw3ytPLRZb7KPXeVGTwXg75-ZYJJ8R9NksFDxgkDMQdOJTJCsWwpENfHELB_dj8_ZnCRBOyIdWeh5ceWUlXvg0NqNiE8uY0LhozV8ZC-Pe"
-                  alt="Vendor avatar"
-                  className="w-full h-full object-cover"
-                />
+                <div className="w-full h-full flex items-center justify-center text-slate-700 font-semibold">
+                  U
+                </div>
               </div>
             </div>
           </div>
@@ -125,13 +107,13 @@ export default function ServicesPage() {
       <section className="max-w-7xl mx-auto px-8 pt-12 pb-10">
         <div className="space-y-3">
           <span className="text-[0.75rem] uppercase tracking-[0.2em] font-bold text-orange-600">
-            Explore Services
+            Explore Products
           </span>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
-            Find professional services and curated packages
+            Find products listed by trusted vendors
           </h1>
           <p className="text-slate-500 max-w-2xl text-lg">
-            Discover expert services from trusted vendors on Siraque.
+            Discover items available for pickup or delivery on Siraque.
           </p>
         </div>
       </section>
@@ -139,7 +121,7 @@ export default function ServicesPage() {
       <section className="max-w-7xl mx-auto px-8 pb-16">
         {loading && (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
-            Loading services...
+            Loading products...
           </div>
         )}
 
@@ -149,25 +131,23 @@ export default function ServicesPage() {
           </div>
         )}
 
-        {!loading && !error && services.length === 0 && (
+        {!loading && !error && products.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500">
-            No services have been published yet.
+            No products have been published yet.
           </div>
         )}
 
-        {!loading && !error && services.length > 0 && (
+        {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {services.map((service) => {
-              const isPackage = service.subtype === "package";
-
+            {products.map((product) => {
               return (
                 <div
-                  key={service.id}
+                  key={product.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => handleSelectService(service)}
+                  onClick={() => handleSelectProduct(product)}
                   className={`bg-white rounded-[2rem] border shadow-sm hover:shadow-xl transition-all duration-300 ${
-                    selectedService?.id === service.id
+                    selectedProduct?.id === product.id
                       ? "border-orange-500 ring-1 ring-orange-200"
                       : "border-slate-200"
                   } cursor-pointer h-full`}
@@ -176,52 +156,51 @@ export default function ServicesPage() {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                          {isPackage ? "Package" : "Service"}
+                          Product
                         </p>
                         <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                          {service.title || "Untitled Service"}
+                          {product.title || "Untitled Product"}
                         </h2>
                       </div>
                       <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        PRO
+                        SALE
                       </span>
                     </div>
 
                     <p className="text-sm text-slate-500 line-clamp-2">
-                      {service.description || "No description available."}
+                      {product.description || "No description available."}
                     </p>
 
                     <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">Duration</span>
-                        <span>
-                          {isPackage
-                            ? `${service.totalDuration || 0}m Session`
-                            : `${service.duration || 0}m Session`}
-                        </span>
+                        <span className="font-semibold text-slate-900">Stock</span>
+                        <span>{product.stock || 0} available</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-900">Delivery</span>
                         <span>
-                          {service.deliveryMode === "studio"
-                            ? `In-Studio${service.studioAddress ? ` • ${service.studioAddress}` : ""}`
-                            : service.deliveryMode === "mobile"
-                            ? "Mobile / On-site"
-                            : service.deliveryMode === "digital"
-                            ? "Digital / Video"
-                            : "Remote Delivery"}
+                          {product.deliveryMode === "delivery"
+                            ? "Local Delivery"
+                            : product.deliveryMode === "pickup"
+                            ? `Pickup${product.pickupAddress ? ` • ${product.pickupAddress}` : ""}`
+                            : "Pickup"}
                         </span>
                       </div>
                     </div>
 
-                    {isPackage && (
-                      <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                        {Array.isArray(service.services) ? service.services.length : 0} Services Included
+                    <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="font-semibold text-slate-900">Category</span>
+                        <span>{product.category || "General"}</span>
                       </div>
-                    )}
+                      <div className="flex items-center justify-between gap-4 mt-2">
+                        <span className="font-semibold text-slate-900">Condition</span>
+                        <span>{product.condition || "New"}</span>
+                      </div>
+                    </div>
 
                     <div className="mt-auto text-3xl font-black text-slate-900">
-                      ${(Number(service.price) || 0).toFixed(2)}
+                      ${(Number(product.price) || 0).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -230,62 +209,81 @@ export default function ServicesPage() {
           </div>
         )}
 
-        {selectedService && (
+        {selectedProduct && (
           <section className="mt-12 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-orange-600 text-lg">📦</span>
+                  <span className="text-orange-600 text-lg">🛍️</span>
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
-                      {selectedService.subtype === "package" ? "Package Details" : "Service Details"}
+                      Product Details
                     </p>
                     <h2 className="text-2xl font-bold text-slate-900">
-                      {selectedService.title || "Selected Service"}
+                      {selectedProduct.title || "Selected Product"}
                     </h2>
                   </div>
                 </div>
                 <p className="text-slate-600 max-w-3xl">
-                  {selectedService.description || "This service includes the selected offering details."}
+                  {selectedProduct.description || "This product includes the selected item details."}
                 </p>
               </div>
 
               <button
-                onClick={() => setSelectedService(null)}
+                onClick={() => setSelectedProduct(null)}
                 className="self-start rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all"
               >
                 Close details
               </button>
             </div>
 
-            {selectedService.subtype === "package" ? (
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
-                {Array.isArray(selectedService.services) && selectedService.services.length > 0 ? (
-                  selectedService.services.map((item, index) => (
-                    <div key={index} className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-semibold text-slate-900">{item.name}</p>
-                          <p className="text-sm text-slate-500">{item.description || "No description"}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900">{item.duration || 0}m</p>
-                          <p className="text-sm text-slate-500">${(Number(item.price) || 0).toFixed(2)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
-                    No package items are available for this selection.
-                  </div>
-                )}
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                <p className="text-sm text-slate-500">Category</p>
+                <p className="font-semibold text-slate-900 mt-1">
+                  {selectedProduct.category || "General"}
+                </p>
               </div>
-            ) : (
-              <div className="mt-8 rounded-3xl border border-slate-200 p-5 bg-slate-50 text-sm text-slate-500">
-                This is a single service. Use the details above to learn more about the offering.
+
+              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                <p className="text-sm text-slate-500">Condition</p>
+                <p className="font-semibold text-slate-900 mt-1">
+                  {selectedProduct.condition || "New"}
+                </p>
               </div>
-            )}
+
+              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                <p className="text-sm text-slate-500">Stock</p>
+                <p className="font-semibold text-slate-900 mt-1">
+                  {selectedProduct.stock || 0} available
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50">
+                <p className="text-sm text-slate-500">Fulfillment</p>
+                <p className="font-semibold text-slate-900 mt-1">
+                  {selectedProduct.deliveryMode === "delivery"
+                    ? "Local Delivery"
+                    : selectedProduct.deliveryMode === "pickup"
+                    ? "Pickup"
+                    : "Pickup"}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 md:col-span-2">
+                <p className="text-sm text-slate-500">Pickup Address</p>
+                <p className="font-semibold text-slate-900 mt-1">
+                  {selectedProduct.pickupAddress || "No pickup address provided."}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 p-5 bg-slate-50 md:col-span-2">
+                <p className="text-sm text-slate-500">Price</p>
+                <p className="text-2xl font-black text-slate-900 mt-1">
+                  ${(Number(selectedProduct.price) || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
           </section>
         )}
       </section>

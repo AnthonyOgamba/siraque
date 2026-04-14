@@ -10,7 +10,6 @@ export default function VendorDashboardPage() {
   const [vendorListings, setVendorListings] = useState([]);
   const [loadingVendorListings, setLoadingVendorListings] = useState(false);
   const [vendorError, setVendorError] = useState("");
-  const placeholderImage = "https://via.placeholder.com/800x500?text=Vendor+Listing";
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -136,16 +135,16 @@ export default function VendorDashboardPage() {
         </header>
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500">
-            <div className="relative z-10">
+          <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500 h-full">
+            <div className="relative z-10 flex h-full flex-col">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <span className="text-orange-600 text-3xl"></span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Product</h3>
-              <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                Add high-quality physical goods to your catalog with rich descriptions and media.
+              <p className="text-xs text-slate-600 mb-6 leading-5">
+                More
               </p>
-              <button className="flex items-center gap-2 text-sm font-bold text-orange-600">
+              <button className="mt-auto flex items-center gap-2 text-sm font-bold text-orange-600">
                 GET STARTED <span>→</span>
               </button>
             </div>
@@ -154,18 +153,18 @@ export default function VendorDashboardPage() {
             </div>
           </div>
 
-          <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500">
-            <div className="relative z-10">
+          <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500 h-full">
+            <div className="relative z-10 flex h-full flex-col">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <span className="text-orange-600 text-3xl"></span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Service</h3>
-              <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                Offer professional services, appointments, or digital experiences to your clients.
+              <p className="text-xs text-slate-600 mb-6 leading-5">
+                More
               </p>
               <Link
                 href="/vendor-dashboard/create-service"
-                className="flex items-center gap-2 text-sm font-bold text-orange-600"
+                className="mt-auto flex items-center gap-2 text-sm font-bold text-orange-600"
               >
                 GET STARTED <span>→</span>
               </Link>
@@ -174,16 +173,16 @@ export default function VendorDashboardPage() {
             </div>
           </div>
 
-          <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500">
-            <div className="relative z-10">
+          <div className="group relative overflow-hidden rounded-[2rem] bg-white p-8 border border-slate-200 hover:shadow-xl transition-all duration-500 h-full">
+            <div className="relative z-10 flex h-full flex-col">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <span className="text-orange-600 text-3xl"></span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Rental</h3>
-              <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                List items for short or long-term hire with automated availability calendars.
+              <p className="text-xs text-slate-600 mb-6 leading-5">
+                More
               </p>
-              <button className="flex items-center gap-2 text-sm font-bold text-orange-600">
+              <button className="mt-auto flex items-center gap-2 text-sm font-bold text-orange-600">
                 GET STARTED <span>→</span>
               </button>
             </div>
@@ -277,111 +276,175 @@ export default function VendorDashboardPage() {
 
           {!loadingVendorListings && !vendorError && vendorListings.length === 0 && (
             <div className="rounded-3xl border border-slate-200 bg-white p-8 text-slate-500">
-              No listings found yet. Use the button above to create your first service.
+              {userId ? (
+                <>
+                  No vendor listings were found for this account.
+                  <div className="mt-3 text-sm text-slate-400">
+                    If you have published items, make sure you are logged in with the correct vendor account.
+                  </div>
+                </>
+              ) : (
+                <>
+                  No listings are visible because you are not logged in.
+                  <div className="mt-3 text-sm text-slate-400">
+                    Please log in to your vendor account to see and edit your stored cards.
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {!loadingVendorListings && vendorListings.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {vendorListings.map((listing) => {
-                const imageSrc = listing.imageUrl || listing.image || listing.imageURL || placeholderImage;
                 const isPackage = listing.subtype === "package";
+                const isProduct = listing.type === "product";
+                const isRental = listing.type === "rental";
 
                 return (
-                  <div
+                    <div
                     key={listing.id}
-                    className="bg-white rounded-[2rem] overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300"
-                  >
-                    <div className="h-48 relative overflow-hidden bg-slate-100">
-                      <img
-                        src={imageSrc}
-                        alt={listing.title || "Listing image"}
-                        onError={(event) => {
-                          event.currentTarget.src = placeholderImage;
-                        }}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-bold text-orange-600 shadow-sm uppercase">
-                        {isPackage ? "Package" : "Service"}
-                      </div>
-                    </div>
+                    className="bg-white rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300"
+                    >
                     <div className="p-6 space-y-4">
-                      <div>
-                        <h4 className="text-xl font-bold text-slate-900 tracking-tight">
-                          {listing.title || "Untitled Listing"}
-                        </h4>
-                        <p className="text-sm text-slate-500 line-clamp-2 mt-2">
-                          {listing.description || "No description provided."}
-                        </p>
-                      </div>
+                        <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h4 className="text-xl font-bold text-slate-900 tracking-tight">
+                            {listing.title || "Untitled Listing"}
+                            </h4>
+                            <p className="text-sm text-slate-500 mt-2 line-clamp-2">
+                            {listing.description || "No description provided."}
+                            </p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600 mt-2">
+                            More
+                            </p>
+                        </div>
 
-                      <div className="flex items-center justify-between gap-3 text-sm text-slate-500">
-                        <span>${(Number(listing.price) || 0).toFixed(2)}</span>
-                        <span>{listing.deliveryMode || "Remote"}</span>
-                      </div>
+                        <div className="rounded-full bg-orange-50 text-orange-600 px-3 py-1 text-xs uppercase font-semibold">
+                            {isRental ? "Rental" : isProduct ? "Product" : isPackage ? "Package" : "Service"}
+                        </div>
+                        </div>
 
-                      <div className="flex gap-3">
+                        <div className="grid grid-cols-2 gap-4 text-sm text-slate-500">
+                        <div>
+                            <p className="font-semibold text-slate-900">Price</p>
+                            <p>${(Number(listing.price) || 0).toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-slate-900">
+                            {isRental ? "Rental Type" : "Delivery"}
+                            </p>
+                            <p>
+                            {isRental
+                                ? listing.subtype === "equipment"
+                                ? "Equipment"
+                                : listing.subtype === "housing"
+                                ? "Housing"
+                                : "Vehicle"
+                                : listing.deliveryMode || "Remote"}
+                            </p>
+                        </div>
+                        </div>
+
+                        <div className="flex gap-3">
                         <Link
-                          href={isPackage ? "/vendor-dashboard/create-service-package" : "/vendor-dashboard/create-service"}
-                          className="flex-1 rounded-2xl bg-orange-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-orange-700 transition-all"
+                            href={
+                            isRental
+                                ? listing.subtype === "equipment"
+                                ? "/vendor-dashboard/create-rental-equipment"
+                                : listing.subtype === "housing"
+                                ? "/vendor-dashboard/create-rental-housing"
+                                : "/vendor-dashboard/create-rental-vehicle"
+                                : isProduct
+                                ? "/vendor-dashboard/create-product"
+                                : isPackage
+                                ? "/vendor-dashboard/create-service-package"
+                                : "/vendor-dashboard/create-service"
+                            }
+                            className="flex-1 rounded-2xl bg-orange-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-orange-700 transition-all"
                         >
-                          Edit
+                            Edit
                         </Link>
+
                         <Link
-                          href="/services"
-                          className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
+                            href={
+                            isRental
+                                ? "/rentals"
+                                : isProduct
+                                ? "/products"
+                                : "/services"
+                            }
+                            className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
                         >
-                          View
+                            View
                         </Link>
-                      </div>
+                        </div>
                     </div>
-                  </div>
+                    </div>
                 );
-              })}
+                })}
             </div>
           )}
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           <div className="space-y-8">
-            <div>
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 p-8">
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400 block mb-2">
                 Inventory Spotlight
               </span>
-              <h3 className="text-2xl font-bold mb-4">Top Performing Listing</h3>
+              <h3 className="text-2xl font-bold mb-3">Top Performing Listing</h3>
+              {vendorListings.length > 0 ? (
+                <>
+                  <p className="text-sm text-slate-500 max-w-2xl mb-6 line-clamp-2">
+                    {vendorListings[0].description || "No description provided."}
+                  </p>
 
-              <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-slate-200 group">
-                <img
-                  alt="Product"
-                  className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-700"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXA44rU5LqoaTA9DTRb4pleG63Ru0sA4MB7273VwbBV4qWu9f9m6xDp3fETXdMANBElpE01L-1J9tx3be1Sf7UWkZznJh99zRHUsTekyp9hJ9PM-cq8ReEzsVEeXR0Awmjaalp2YDGkmRQmkBel4LNlY3_1Q57xccBOQ-3n_6f__I38nKOhmoVNB1q9F_8QWaa0OmBUdwUi8MRVaAOs4LghYMqs6A1sdA-YUIom1tKv6jWtQ9TJzf9eglzR2f5lNXIKG4qCQZ5jhMA"
-                />
-
-                <div className="p-8">
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm text-slate-500 mb-6">
                     <div>
-                      <h4 className="text-xl font-bold">
-                        Studio Professional Headphones
-                      </h4>
-                      <p className="text-sm text-slate-500">
-                        Physical Product • $299.00
-                      </p>
+                      <p className="font-semibold text-slate-900">Price</p>
+                      <p>${(Number(vendorListings[0].price) || 0).toFixed(2)}</p>
                     </div>
-                    <span className="bg-orange-50 text-orange-600 text-xs font-bold px-3 py-1 rounded-full">
-                      85 Sold
-                    </span>
+                    <div>
+                      <p className="font-semibold text-slate-900">Delivery</p>
+                      <p>{vendorListings[0].deliveryMode || "Remote"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm text-slate-500 mb-6">
+                    <div>
+                      <p className="font-semibold text-slate-900">Type</p>
+                      <p>{vendorListings[0].subtype === "package" ? "Package" : "Service"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">Status</p>
+                      <p className="capitalize">{vendorListings[0].status || "draft"}</p>
+                    </div>
                   </div>
 
                   <div className="flex gap-3">
-                    <button className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-medium text-sm">
+                    <Link
+                      href={vendorListings[0].subtype === "package" ? "/vendor-dashboard/create-service-package" : "/vendor-dashboard/create-service"}
+                      className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-medium text-sm text-center hover:bg-orange-700 transition-all"
+                    >
                       Edit Listing
-                    </button>
-                    <button className="px-4 py-3 bg-slate-100 rounded-xl">
+                    </Link>
+                    <Link
+                      href="/services"
+                      className="flex-1 py-3 bg-slate-100 rounded-xl text-sm font-semibold text-slate-700 text-center hover:bg-slate-200 transition-all"
+                    >
                       View
-                    </button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-500">No spotlight listing is available yet.</p>
+                  <div className="rounded-2xl bg-slate-50 p-6 text-sm text-slate-500">
+                    Publish a service or package to see it highlighted here.
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
