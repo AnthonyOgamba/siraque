@@ -59,7 +59,8 @@ export default function ServicesPage() {
   }
 
   function getServiceItemKey(item, index, serviceId) {
-    return item.id || item.name || item.title || `${serviceId || "package"}-service-${index}`;
+    const base = item.id || item.name || item.title || `service-${index}`;
+    return `${serviceId || "package"}-${index}-${base}`;
   }
 
   function initializePackageSelection(service) {
