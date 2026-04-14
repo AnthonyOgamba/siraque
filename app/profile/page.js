@@ -38,6 +38,14 @@ export default function ProfilePage() {
     setProfileMessage("Your profile details were updated.");
   }
 
+  function handleDeleteProfile() {
+    if (!window.confirm("Are you sure you want to delete your profile details?")) {
+      return;
+    }
+
+    setProfileMessage("Profile delete action confirmed.");
+  }
+
   return (
     <main className="min-h-screen bg-[#f9f9fb] text-slate-900">
       <SiteHeader activePage="" showSearch={false} />
@@ -119,6 +127,17 @@ export default function ProfilePage() {
               <p className="mt-6 text-3xl font-bold text-slate-900">{savedItems.length}</p>
               <p className="mt-2 text-sm text-slate-500">See the items you clicked from the marketplace.</p>
             </Link>
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={handleDeleteProfile}
+              className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 transition-all"
+            >
+              <span className="text-lg">🗑️</span>
+              Delete profile
+            </button>
           </div>
 
           {expandedCard === "edit-profile" && (

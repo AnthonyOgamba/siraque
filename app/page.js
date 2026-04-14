@@ -59,7 +59,8 @@ export default function HomePage() {
   }
 
   function getListingItemKey(item, index, listingId) {
-    return item.id || item.name || item.title || `${listingId || "package"}-service-${index}`;
+    const base = item.id || item.name || item.title || `service-${index}`;
+    return `${listingId || "package"}-${index}-${base}`;
   }
 
   function initializePackageSelection(listing) {
