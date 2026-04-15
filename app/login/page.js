@@ -28,22 +28,14 @@ export default function LoginPage() {
   }
 
   async function routeUserByRole(uid) {
-    const redirect = typeof window === "undefined"
-      ? null
-      : new URLSearchParams(window.location.search).get("redirect");
     const role = await resolveUserRole(uid);
-
-    if (redirect) {
-      router.push(redirect);
-      return;
-    }
 
     if (role === "vendor") {
       router.push("/vendor-dashboard");
     } else if (role === "superadmin") {
       router.push("/admin");
     } else {
-      router.push("/");
+      router.push("/homepage");
     }
   }
 

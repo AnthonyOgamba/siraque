@@ -31,6 +31,21 @@ export default function CreateProductPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const response = await fetch("/api/categories?type=product");
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (err) {
+        console.error("Unable to load product categories:", err);
+      }
+    }
+
+    loadCategories();
+  }, []);
 
   useEffect(() => {
     if (!listingId) return;
@@ -252,14 +267,19 @@ export default function CreateProductPage() {
                   <label className="text-[0.75rem] font-semibold text-slate-500 mb-2 block uppercase tracking-wide">
                     Category
                   </label>
-                  <input
+                  <select
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
                     className="w-full bg-white rounded-xl p-4 border border-slate-200 focus:border-orange-600 focus:ring-1 focus:ring-orange-200 transition-all outline-none"
-                    placeholder="e.g. Electronics"
-                    type="text"
-                  />
+                  >
+                    <option value="">Select category</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

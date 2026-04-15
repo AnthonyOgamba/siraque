@@ -88,7 +88,7 @@ export default function SignupPage() {
         } else if (role === "superadmin") {
           router.push("/admin");
         } else {
-          router.push("/");
+          router.push("/homepage");
         }
       }, 1500);
     } catch (err) {

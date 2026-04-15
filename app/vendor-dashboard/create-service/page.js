@@ -23,13 +23,29 @@ export default function CreateServicePage() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    category: "",
     price: "",
     duration: "30",
     studioAddress: "882 West Editorial Lane, Suite 400, Chicago IL",
   });
+  const [categories, setCategories] = useState([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const response = await fetch("/api/categories?type=service");
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (err) {
+        console.error("Unable to load service categories:", err);
+      }
+    }
+
+    loadCategories();
+  }, []);
 
   useEffect(() => {
     if (!listingId) return;
@@ -53,6 +69,7 @@ export default function CreateServicePage() {
         setFormData({
           title: data.title || "",
           description: data.description || "",
+          category: data.category || "",
           price: data.price?.toString() || "",
           duration: data.duration?.toString() || "30",
           studioAddress: data.studioAddress || "882 West Editorial Lane, Suite 400, Chicago IL",
@@ -108,20 +125,26 @@ export default function CreateServicePage() {
       return;
     }
 
-    if (deliveryMode === "studio" && !formData.studioAddress.trim()) {
-      setError("Please enter a studio address for in-studio services.");
-      return;
-    }
+if (!formData.category.trim()) {
+        setError("Please select a category for your service.");
+        return;
+      }
 
-    try {
-      setIsPublishing(true);
+      if (deliveryMode === "studio" && !formData.studioAddress.trim()) {
+        setError("Please enter a studio address for in-studio services.");
+        return;
+      }
 
-      const listingData = {
-        type: "service",
-        subtype: "single",
-        vendorId: user.uid,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
+      try {
+        setIsPublishing(true);
+
+        const listingData = {
+          type: "service",
+          subtype: "single",
+          vendorId: user.uid,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          category: formData.category.trim(),
         price: Number(formData.price),
         duration: Number(formData.duration),
         deliveryMode,
@@ -142,6 +165,7 @@ export default function CreateServicePage() {
       setFormData({
         title: "",
         description: "",
+        category: "",
         price: "",
         duration: "30",
         studioAddress: "882 West Editorial Lane, Suite 400, Chicago IL",
@@ -264,6 +288,25 @@ export default function CreateServicePage() {
                     placeholder="Describe the value proposition, outcomes, and what clients should expect..."
                     rows="4"
                   ></textarea>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[0.75rem] font-semibold text-slate-500 mb-2 block uppercase tracking-wide">
+                    Category
+                  </label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    className="w-full bg-white rounded-xl p-4 border border-slate-200 focus:border-orange-600 focus:ring-1 focus:ring-orange-200 transition-all outline-none"
+                  >
+                    <option value="">Select category</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </section>
