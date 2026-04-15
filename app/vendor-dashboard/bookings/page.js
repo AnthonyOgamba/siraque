@@ -51,25 +51,7 @@ export default function VendorBookingsPage() {
   }, [userId]);
 
   return (
-    <main className="min-h-screen bg-[#f9f9fb] text-slate-900">
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200">
-        <div className="max-w-screen-2xl mx-auto px-10 h-20 flex items-center justify-between">
-          <Link href="/vendor-dashboard" className="text-2xl font-bold tracking-tighter text-slate-900">
-            Siraque Vendor
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/vendor-dashboard" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
-              Dashboard
-            </Link>
-            <Link href="/vendor-dashboard/listings" className="text-slate-600 hover:text-orange-600 transition-all duration-300">
-              Listings
-            </Link>
-            <span className="text-orange-600 font-semibold">Bookings</span>
-          </div>
-        </div>
-      </nav>
-
-      <section className="max-w-7xl mx-auto px-8 py-16">
+    <section className="max-w-7xl mx-auto px-8 py-16">
         <div className="mb-10">
           <span className="text-[0.75rem] uppercase tracking-[0.2em] font-bold text-orange-600">
             Your Bookings
@@ -149,6 +131,5 @@ export default function VendorBookingsPage() {
           </div>
         )}
       </section>
-    </main>
   );
 }

@@ -104,7 +104,7 @@ export default function HomePage() {
     saveClickedItem(listing);
     initializePackageSelection(listing);
 
-    if (!user) {
+    if (!user || listing.vendorId !== user.uid) {
       return;
     }
 
@@ -112,8 +112,8 @@ export default function HomePage() {
       await updateDoc(doc(db, "listings", listing.id), {
         clicks: increment(1),
       });
-    } catch (err) {
-      console.error("Listing click tracking failed:", err);
+    } catch {
+      // Click tracking is optional and may be restricted by Firestore rules.
     }
   }
 
@@ -343,13 +343,6 @@ export default function HomePage() {
                 Published products, services, and rentals
               </h2>
             </div>
-
-            <a
-              href="/services"
-              className="text-orange-600 font-semibold flex items-center gap-2 hover:gap-4 transition-all duration-300"
-            >
-              View marketplace <span>→</span>
-            </a>
           </div>
 
           {loading && (

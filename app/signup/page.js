@@ -74,6 +74,7 @@ export default function SignupPage() {
         fullName,
         email,
         role,
+        status: "active",
         createdAt: serverTimestamp(),
       });
 
@@ -84,6 +85,8 @@ export default function SignupPage() {
       setTimeout(() => {
         if (role === "vendor") {
           router.push("/vendor-dashboard");
+        } else if (role === "superadmin") {
+          router.push("/admin");
         } else {
           router.push("/");
         }
@@ -158,7 +161,7 @@ export default function SignupPage() {
             </p>
             <h2 className="text-3xl font-bold text-slate-900">Create your account</h2>
             <p className="text-slate-600 mt-2">
-              Choose whether you want to join Siraque as a customer or a vendor.
+              Choose whether you want to join Siraque as a customer, vendor, or superadmin.
             </p>
             <p className="text-slate-600 mt-2">
               Already have an account?{" "}
@@ -202,7 +205,7 @@ export default function SignupPage() {
                 Choose Account Type
               </label>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   type="button"
                   onClick={() =>
@@ -242,7 +245,28 @@ export default function SignupPage() {
                     Create and manage product and service listings from your vendor dashboard.
                   </p>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      role: "superadmin",
+                    }))
+                  }
+                  className={`rounded-lg border p-4 text-left transition ${
+                    formData.role === "superadmin"
+                      ? "border-orange-600 bg-orange-50 ring-2 ring-orange-200"
+                      : "border-slate-300 bg-white hover:border-orange-400"
+                  }`}
+                >
+                  <h3 className="text-base font-semibold text-slate-900">Superadmin</h3>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Manage vendors, customers, and platform content from the admin dashboard.
+                  </p>
+                </button>
               </div>
+
 
               <p className="mt-3 text-sm text-slate-600">
                 Selected account type:{" "}

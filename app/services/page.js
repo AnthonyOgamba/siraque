@@ -128,7 +128,7 @@ export default function ServicesPage() {
     saveClickedItem(service);
     initializePackageSelection(service);
 
-    if (!user) {
+    if (!user || service.vendorId !== user.uid) {
       return;
     }
 
@@ -136,8 +136,8 @@ export default function ServicesPage() {
       await updateDoc(doc(db, "listings", service.id), {
         clicks: increment(1),
       });
-    } catch (err) {
-      console.error("Service click tracking failed:", err);
+    } catch {
+      // Click tracking is optional and may be restricted by Firestore rules.
     }
   }
 

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, db } from "../utils/firebase";
+import { auth } from "../utils/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { resolveUserRole } from "../utils/resolveUserRole";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,19 +28,19 @@ export default function LoginPage() {
   }
 
   async function routeUserByRole(uid) {
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
+    const redirect = typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("redirect");
+    const role = await resolveUserRole(uid);
 
-    if (!userSnap.exists()) {
-      router.push("/");
+    if (redirect) {
+      router.push(redirect);
       return;
     }
 
-    const userData = userSnap.data();
-
-    if (userData.role === "vendor") {
+    if (role === "vendor") {
       router.push("/vendor-dashboard");
-    } else if (userData.role === "admin") {
+    } else if (role === "superadmin") {
       router.push("/admin");
     } else {
       router.push("/");

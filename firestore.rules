@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "superadmin";
+    }
+
+    function isVendor() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "vendor";
+    }
+
+    match /users/{userId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role in ["customer", "vendor", "superadmin"]
+        && request.resource.data.status == "active";
+
+      allow read, update, delete: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow list: if isSuperAdmin();
+    }
+
+    match /listings/{listingId} {
+      allow read, list: if true;
+
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.vendorId
+        && isVendor();
+
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.vendorId || isSuperAdmin()
+      );
+    }
+
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.customerId
+        && request.resource.data.vendorId is string
+        && request.resource.data.customerId is string
+        && request.resource.data.totalPrice is number
+        && request.resource.data.quantity is number
+        && request.resource.data.status is string
+        && request.resource.data.createdAt is timestamp;
+
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.customerId
+        || request.auth.uid == resource.data.vendorId
+        || isSuperAdmin()
+      );
+
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.customerId
+        || request.auth.uid == resource.data.vendorId
+        || isSuperAdmin()
+      );
+    }
+
+    match /notifications/{notificationId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.senderId
+        && request.resource.data.recipientId is string
+        && request.resource.data.senderRole is string
+        && request.resource.data.message is string
+        && request.resource.data.read is bool
+        && request.resource.data.createdAt is timestamp;
+
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.recipientId
+        || isSuperAdmin()
+      );
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

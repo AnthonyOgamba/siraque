@@ -3,6 +3,7 @@
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { auth } from "../utils/firebase";
 
 export default function ProfilePage() {
@@ -13,6 +14,16 @@ export default function ProfilePage() {
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+      setProfileName(currentUser?.displayName || "");
+      setProfileEmail(currentUser?.email || "");
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const savedOrderHistory = window.localStorage.getItem("siraque_order_history");
@@ -20,13 +31,6 @@ export default function ProfilePage() {
 
     setOrders(savedOrderHistory ? JSON.parse(savedOrderHistory) : []);
     setSavedItems(savedClicks ? JSON.parse(savedClicks) : []);
-
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      setProfileName(currentUser?.displayName || "");
-      setProfileEmail(currentUser?.email || "");
-    });
-    return unsubscribe;
   }, []);
 
   function handleToggleCard(cardId) {
@@ -38,12 +42,15 @@ export default function ProfilePage() {
     setProfileMessage("Your profile details were updated.");
   }
 
-  function handleDeleteProfile() {
-    if (!window.confirm("Are you sure you want to delete your profile details?")) {
-      return;
-    }
-
-    setProfileMessage("Profile delete action confirmed.");
+  function handleLogout() {
+    auth.signOut()
+      .then(() => {
+        router.push("/login");
+      })
+      .catch((error) => {
+        console.error("Logout failed:", error);
+        setProfileMessage("Failed to logout. Please try again.");
+      });
   }
 
   return (
@@ -129,17 +136,6 @@ export default function ProfilePage() {
             </Link>
           </div>
 
-          <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={handleDeleteProfile}
-              className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 transition-all"
-            >
-              <span className="text-lg">🗑️</span>
-              Delete profile
-            </button>
-          </div>
-
           {expandedCard === "edit-profile" && (
             <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white shadow-sm p-8">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
@@ -204,6 +200,16 @@ export default function ProfilePage() {
               )}
             </section>
           )}
+
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </section>
     </main>

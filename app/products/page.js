@@ -85,7 +85,7 @@ export default function ProductsPage() {
     setSelectedProduct(product);
     saveClickedItem(product);
 
-    if (!user) {
+    if (!user || product.vendorId !== user.uid) {
       return;
     }
 
@@ -93,8 +93,8 @@ export default function ProductsPage() {
       await updateDoc(doc(db, "listings", product.id), {
         clicks: increment(1),
       });
-    } catch (err) {
-      console.error("Product click tracking failed:", err);
+    } catch {
+      // Click tracking is optional and may be restricted by Firestore rules.
     }
   }
 

@@ -86,7 +86,7 @@ export default function RentalsPage() {
     setSelectedRental(rental);
     saveClickedItem(rental);
 
-    if (!user) {
+    if (!user || rental.vendorId !== user.uid) {
       return;
     }
 
@@ -94,8 +94,8 @@ export default function RentalsPage() {
       await updateDoc(doc(db, "listings", rental.id), {
         clicks: increment(1),
       });
-    } catch (err) {
-      console.error("Rental click tracking failed:", err);
+    } catch {
+      // Click tracking is optional and may be restricted by Firestore rules.
     }
   }
 

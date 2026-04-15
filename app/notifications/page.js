@@ -1,28 +1,62 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import SiteHeader from "../components/SiteHeader";
-import { auth } from "../utils/firebase";
+import { auth, db } from "../utils/firebase";
+
+function sortNotificationsByCreatedAt(items) {
+  return [...items].sort((a, b) => {
+    const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return bTime - aTime;
+  });
+}
 
 export default function NotificationsPage() {
-  const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState(null);
   const [expandedId, setExpandedId] = useState("profile-1");
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    const savedCart = window.localStorage.getItem("siraque_checkout_cart");
-    if (savedCart) {
-      const parsedCart = JSON.parse(savedCart);
-      setCartCount(parsedCart.reduce((count, item) => count + (item.quantity || 1), 0));
-    }
-
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
       setProfileName(currentUser?.displayName || "");
       setProfileEmail(currentUser?.email || "");
+
+      if (!currentUser) {
+        setNotifications([]);
+        return;
+      }
+
+      try {
+        const notificationsRef = collection(db, "notifications");
+
+        try {
+          const notificationsQuery = query(
+            notificationsRef,
+            where("recipientId", "==", currentUser.uid),
+            orderBy("createdAt", "desc")
+          );
+          const snapshot = await getDocs(notificationsQuery);
+          setNotifications(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        } catch (indexError) {
+          const fallbackQuery = query(
+            notificationsRef,
+            where("recipientId", "==", currentUser.uid)
+          );
+          const snapshot = await getDocs(fallbackQuery);
+          const notificationData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setNotifications(sortNotificationsByCreatedAt(notificationData));
+          console.warn("Notifications query used fallback because the composite index is missing.", indexError);
+        }
+      } catch (err) {
+        console.error("Failed to load notifications:", err);
+        setNotifications([]);
+      }
     });
 
     return unsubscribe;
@@ -39,8 +73,8 @@ export default function NotificationsPage() {
     setProfileMessage("Your profile details were updated.");
   }
 
-  const cards = [
-      {
+  const sampleCards = [
+    {
       id: "confirm-1",
       title: "Booking confirmed",
       message: "Thank you for booking these items. The vendor will reach out soon to finalize details.",
@@ -66,6 +100,15 @@ export default function NotificationsPage() {
     },
   ];
 
+  const displayedCards = notifications.length > 0
+    ? notifications.map((notification) => ({
+        ...notification,
+        title: notification.title || "Platform message",
+        time: notification.createdAt?.toDate ? notification.createdAt.toDate().toLocaleString() : notification.time || "Just now",
+        details: notification.details || notification.message,
+      }))
+    : sampleCards;
+
   return (
     <main className="min-h-screen bg-[#f9f9fb] text-slate-900">
       <SiteHeader activePage="" showSearch={false} />
@@ -87,7 +130,7 @@ export default function NotificationsPage() {
           </div>
 
           <div className="mt-12 space-y-4">
-            {cards.map((card) => {
+            {displayedCards.map((card) => {
               const isExpanded = expandedId === card.id;
               return (
                 <article key={card.id} className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">

@@ -133,21 +133,8 @@ export default function CreateRentalHousingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f9f9fb] text-[#2d3338]">
-      <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/15 shadow-sm flex justify-between items-center px-8 h-16">
-        <div className="flex items-center gap-8">
-          <span className="text-xl font-bold tracking-tighter text-slate-800">Siraque</span>
-        </div>
-      </nav>
-
-      <aside className="fixed left-0 top-0 h-screen w-64 pt-20 bg-slate-50 flex flex-col p-4 gap-2">
-        <div className="mb-6 px-2">
-          <h2 className="text-lg font-bold text-slate-900">Siraque</h2>
-          <p className="text-xs text-slate-500">Vendor Portal</p>
-        </div>
-      </aside>
-
-      <main className="ml-64 pt-24 px-12 pb-20 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white text-[#2d3338]">
+      <div className="pt-24 px-6 pb-20 max-w-7xl mx-auto">
         <div className="space-y-10 mb-12">
           <header className="flex justify-between items-end min-h-[110px]">
             <div className="space-y-2">
@@ -266,7 +253,7 @@ export default function CreateRentalHousingPage() {
             </div>
           </div>
         </div>
-      </main>
-    </main>
+      </div>
+    </div>
   );
 }

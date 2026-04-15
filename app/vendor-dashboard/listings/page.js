@@ -182,12 +182,6 @@ export default function VendorListingsPage() {
             >
               Back to Dashboard
             </Link>
-            <Link
-              href="/vendor-dashboard/create-service"
-              className="rounded-2xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
-            >
-              Add New Service
-            </Link>
           </div>
         </div>
       </section>
