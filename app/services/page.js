@@ -320,16 +320,16 @@ export default function ServicesPage() {
                         </h2>
                       </div>
                       <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        PRO
+                        {isPackage ? "PACKAGE" : "PRO"}
                       </span>
                     </div>
 
-                    <p className="text-sm text-slate-500 line-clamp-2">
+                    <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
                       {service.description || "No description available."}
                     </p>
 
-                    <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-3 text-sm text-slate-500">
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                         <span className="font-semibold text-slate-900">Duration</span>
                         <span>
                           {isPackage
@@ -337,9 +337,9 @@ export default function ServicesPage() {
                             : `${service.duration || 0}m Session`}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                         <span className="font-semibold text-slate-900">Delivery</span>
-                        <span>
+                        <span className="text-right">
                           {service.deliveryMode === "studio"
                             ? `In-Studio${service.studioAddress ? ` • ${service.studioAddress}` : ""}`
                             : service.deliveryMode === "mobile"
@@ -351,11 +351,11 @@ export default function ServicesPage() {
                       </div>
                     </div>
 
-                    {isPackage && (
-                      <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                        {Array.isArray(service.services) ? service.services.length : 0} Services Included
-                      </div>
-                    )}
+                    <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+                      {isPackage
+                        ? `${Array.isArray(service.services) ? service.services.length : 0} Services Included`
+                        : "Professional Service"}
+                    </div>
 
                     <div className="mt-auto text-3xl font-black text-slate-900">
                       ${(Number(service.price) || 0).toFixed(2)}

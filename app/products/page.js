@@ -229,22 +229,22 @@ export default function ProductsPage() {
                         </h2>
                       </div>
                       <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        SALE
+                        SHOP
                       </span>
                     </div>
 
-                    <p className="text-sm text-slate-500 line-clamp-2">
+                    <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
                       {product.description || "No description available."}
                     </p>
 
-                    <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">Stock</span>
+                    <div className="space-y-3 text-sm text-slate-500">
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                        <span className="font-semibold text-slate-900">Details</span>
                         <span>{product.stock || 0} available</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">Delivery</span>
-                        <span>
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                        <span className="font-semibold text-slate-900">Type</span>
+                        <span className="text-right">
                           {product.deliveryMode === "delivery"
                             ? "Local Delivery"
                             : product.deliveryMode === "pickup"
@@ -254,15 +254,8 @@ export default function ProductsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="font-semibold text-slate-900">Category</span>
-                        <span>{product.category || "General"}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-4 mt-2">
-                        <span className="font-semibold text-slate-900">Condition</span>
-                        <span>{product.condition || "New"}</span>
-                      </div>
+                    <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+                      {product.category || "General"} • {product.condition || "New"} Product
                     </div>
 
                     <div className="mt-auto text-3xl font-black text-slate-900">

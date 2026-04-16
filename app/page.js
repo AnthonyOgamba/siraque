@@ -235,6 +235,33 @@ export default function HomePage() {
       : "Remote Delivery";
   }
 
+  function getCardSummaryText(listing) {
+    if (listing.type === "service" && listing.subtype === "package") {
+      return `${Array.isArray(listing.services) ? listing.services.length : 0} Services Included`;
+    }
+
+    if (listing.type === "product") {
+      return `${listing.category || "General"} • ${listing.condition || "New"} Product`;
+    }
+
+    if (listing.type === "rental") {
+      return listing.subtype === "equipment"
+        ? `${listing.quantity || 0} Units Available`
+        : listing.subtype === "housing"
+        ? `${listing.guests || 0} Guest Capacity`
+        : `${listing.seats || 0} Seat Vehicle`;
+    }
+
+    return "Professional Service";
+  }
+
+  function getCardBadgeText(listing) {
+    if (listing.type === "product") return "SHOP";
+    if (listing.type === "rental") return "RENT";
+    if (listing.subtype === "package") return "PACKAGE";
+    return "PRO";
+  }
+
   useEffect(() => {
     async function fetchServices() {
       setLoading(true);
@@ -404,16 +431,16 @@ export default function HomePage() {
                             </h2>
                           </div>
                           <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                            LIVE
+                            {getCardBadgeText(listing)}
                           </span>
                         </div>
 
-                        <p className="text-sm text-slate-500 line-clamp-2">
+                        <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
                           {listing.description || "No description available."}
                         </p>
 
-                        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
-                          <div className="flex items-center gap-2">
+                        <div className="space-y-3 text-sm text-slate-500">
+                          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                             <span className="font-semibold text-slate-900">
                               {isService ? "Duration" : "Details"}
                             </span>
@@ -425,21 +452,19 @@ export default function HomePage() {
                                 : getDetailLabel(listing)}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                             <span className="font-semibold text-slate-900">
                               {isService ? "Delivery" : "Type"}
                             </span>
-                            <span>
+                            <span className="text-right">
                               {isService ? getServiceDeliveryText(listing) : getSecondaryLabel(listing)}
                             </span>
                           </div>
                         </div>
 
-                        {isService && isPackage && (
-                          <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                            {Array.isArray(listing.services) ? listing.services.length : 0} Services Included
-                          </div>
-                        )}
+                        <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+                          {getCardSummaryText(listing)}
+                        </div>
 
                         <div className="mt-auto text-3xl font-black text-slate-900">
                           ${(Number(listing.price) || 0).toFixed(2)}

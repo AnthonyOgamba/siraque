@@ -293,24 +293,32 @@ export default function RentalsPage() {
                       </div>
 
                       <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        {getRentalLabel(rental)}
+                        RENT
                       </span>
                     </div>
 
-                    <p className="text-sm text-slate-500 line-clamp-2">
+                    <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
                       {rental.description || "No description available."}
                     </p>
 
-                    <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-3 text-sm text-slate-500">
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                         <span className="font-semibold text-slate-900">Details</span>
                         <span>{getRentalSummary(rental)}</span>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                         <span className="font-semibold text-slate-900">Type</span>
-                        <span>{getRentalMeta(rental)}</span>
+                        <span className="text-right">{getRentalMeta(rental)}</span>
                       </div>
+                    </div>
+
+                    <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+                      {rental.subtype === "equipment"
+                        ? `${rental.quantity || 0} Units Available`
+                        : rental.subtype === "housing"
+                        ? `${rental.guests || 0} Guest Capacity`
+                        : `${rental.seats || 0} Seat Vehicle`}
                     </div>
 
                     <div className="mt-auto">
