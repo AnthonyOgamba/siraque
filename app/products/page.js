@@ -244,7 +244,6 @@ export default function ProductsPage() {
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-orange-600 text-lg">[Product]</span>
                           <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
                               Product Details
