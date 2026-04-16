@@ -167,6 +167,13 @@ export default function LoginPage() {
             >
               {loading ? "Signing In..." : "Sign In"}
             </button>
+
+            <Link
+              href="/"
+              className="block w-full text-center text-sm font-semibold text-slate-600 hover:text-orange-600"
+            >
+              Back
+            </Link>
           </form>
         </div>
       </section>

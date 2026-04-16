@@ -329,6 +329,13 @@ export default function SignupPage() {
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
+
+            <Link
+              href="/"
+              className="block w-full text-center text-sm font-semibold text-slate-600 hover:text-orange-600"
+            >
+              Back
+            </Link>
           </form>
         </div>
       </section>
