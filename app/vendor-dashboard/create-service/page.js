@@ -503,5 +503,6 @@ function CreateServicePageContent() {
           </div>
         </div>
       </div>
+    </div>
   );
 }

@@ -262,5 +262,6 @@ function CreateRentalHousingPageContent() {
           </div>
         </div>
       </div>
+    </div>
   );
 }

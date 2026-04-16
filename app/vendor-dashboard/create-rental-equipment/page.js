@@ -484,5 +484,6 @@ function CreateRentalEquipmentPageContent() {
           </div>
         </div>
       </div>
+    </div>
   );
 }
