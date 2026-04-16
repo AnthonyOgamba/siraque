@@ -444,5 +444,6 @@ function CreateRentalVehiclePageContent() {
           </div>
         </div>
       </div>
+    </div>
   );
 }

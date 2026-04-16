@@ -738,5 +738,6 @@ function CreateServicePackagePageContent() {
           </div>
         </div>
       </div>
+    </div>
   );
 }
