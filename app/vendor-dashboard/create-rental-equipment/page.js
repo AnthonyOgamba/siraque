@@ -35,21 +35,6 @@ export default function CreateRentalEquipmentPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [categories, setCategories] = useState([]);
-
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const response = await fetch("/api/categories?type=rental");
-        const data = await response.json();
-        setCategories(data.categories || []);
-      } catch (err) {
-        console.error("Unable to load rental categories:", err);
-      }
-    }
-
-    loadCategories();
-  }, []);
 
   useEffect(() => {
     if (!listingId) return;
@@ -288,19 +273,14 @@ export default function CreateRentalEquipmentPage() {
 
                 <div>
                   <label className="text-[0.75rem] font-semibold text-slate-500 mb-2 block uppercase tracking-wide">Category</label>
-                  <select
+                  <input
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
                     className="w-full bg-white rounded-xl p-4 border border-slate-200 focus:border-orange-600 outline-none"
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="e.g. Photography"
+                    type="text"
+                  />
                 </div>
 
                 <div>
