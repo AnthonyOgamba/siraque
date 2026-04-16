@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
+import ListingCard from "../components/ListingCard";
 import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "../utils/firebase";
 
@@ -270,77 +271,32 @@ export default function RentalsPage() {
             {filteredRentals.flatMap((rental) => {
               const inCart = cart.some((item) => item.id === rental.id);
               const card = (
-                <div
+                <ListingCard
                   key={rental.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectRental(rental)}
-                  className={`bg-white rounded-[2rem] border shadow-sm hover:shadow-xl transition-all duration-300 ${
-                    selectedRental?.id === rental.id
-                      ? "border-orange-500 ring-1 ring-orange-200"
-                      : "border-slate-200"
-                  } cursor-pointer h-full`}
-                >
-                  <div className="p-8 flex h-full flex-col gap-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                          Rental
-                        </p>
-                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                          {rental.title || "Untitled Rental"}
-                        </h2>
-                      </div>
-
-                      <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        RENT
-                      </span>
-                    </div>
-
-                    <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
-                      {rental.description || "No description available."}
-                    </p>
-
-                    <div className="space-y-3 text-sm text-slate-500">
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                        <span className="font-semibold text-slate-900">Details</span>
-                        <span>{getRentalSummary(rental)}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                        <span className="font-semibold text-slate-900">Type</span>
-                        <span className="text-right">{getRentalMeta(rental)}</span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                      {rental.subtype === "equipment"
-                        ? `${rental.quantity || 0} Units Available`
-                        : rental.subtype === "housing"
-                        ? `${rental.guests || 0} Guest Capacity`
-                        : `${rental.seats || 0} Seat Vehicle`}
-                    </div>
-
-                    <div className="mt-auto">
-                      <div className="text-3xl font-black text-slate-900">
-                        ${(Number(rental.price) || 0).toFixed(2)}
-                        <span className="text-sm font-medium text-slate-500 ml-2">
-                          {getPriceSuffix(rental)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(event) => handleAddToCart(event, rental)}
-                      className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
-                    >
-                      {inCart ? "Add another" : "Add to Cart"}
-                    </button>
-                  </div>
-                </div>
+                  isSelected={selectedRental?.id === rental.id}
+                  onSelect={() => handleSelectRental(rental)}
+                  eyebrow="Rental"
+                  title={rental.title}
+                  titleFallback="Untitled Rental"
+                  badge="RENT"
+                  description={rental.description}
+                  primaryLabel="Details"
+                  primaryValue={getRentalSummary(rental)}
+                  secondaryLabel="Type"
+                  secondaryValue={getRentalMeta(rental)}
+                  summaryText={
+                    rental.subtype === "equipment"
+                      ? `${rental.quantity || 0} Units Available`
+                      : rental.subtype === "housing"
+                      ? `${rental.guests || 0} Guest Capacity`
+                      : `${rental.seats || 0} Seat Vehicle`
+                  }
+                  price={(Number(rental.price) || 0).toFixed(2)}
+                  priceSuffix={getPriceSuffix(rental)}
+                  buttonText={inCart ? "Add another" : "Add to Cart"}
+                  onButtonClick={(event) => handleAddToCart(event, rental)}
+                />
               );
-
               if (selectedRental?.id !== rental.id) {
                 return [card];
               }
@@ -352,7 +308,7 @@ export default function RentalsPage() {
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-orange-600 text-lg">🏷️</span>
+                          <span className="text-orange-600 text-lg">[Rental]</span>
                           <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
                               Rental Details

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
+import ListingCard from "../components/ListingCard";
 import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "../utils/firebase";
 
@@ -207,72 +208,31 @@ export default function ProductsPage() {
             {filteredProducts.flatMap((product) => {
               const inCart = cart.some((item) => item.id === product.id);
               const card = (
-                <div
+                <ListingCard
                   key={product.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectProduct(product)}
-                  className={`bg-white rounded-[2rem] border shadow-sm hover:shadow-xl transition-all duration-300 ${
-                    selectedProduct?.id === product.id
-                      ? "border-orange-500 ring-1 ring-orange-200"
-                      : "border-slate-200"
-                  } cursor-pointer h-full`}
-                >
-                  <div className="p-8 flex h-full flex-col gap-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                          Product
-                        </p>
-                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                          {product.title || "Untitled Product"}
-                        </h2>
-                      </div>
-                      <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        SHOP
-                      </span>
-                    </div>
-
-                    <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
-                      {product.description || "No description available."}
-                    </p>
-
-                    <div className="space-y-3 text-sm text-slate-500">
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                        <span className="font-semibold text-slate-900">Details</span>
-                        <span>{product.stock || 0} available</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                        <span className="font-semibold text-slate-900">Type</span>
-                        <span className="text-right">
-                          {product.deliveryMode === "delivery"
-                            ? "Local Delivery"
-                            : product.deliveryMode === "pickup"
-                            ? `Pickup${product.pickupAddress ? ` • ${product.pickupAddress}` : ""}`
-                            : "Pickup"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                      {product.category || "General"} • {product.condition || "New"} Product
-                    </div>
-
-                    <div className="mt-auto text-3xl font-black text-slate-900">
-                      ${(Number(product.price) || 0).toFixed(2)}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(event) => handleAddToCart(event, product)}
-                      className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
-                    >
-                      {inCart ? "Add another" : "Add to Cart"}
-                    </button>
-                  </div>
-                </div>
+                  isSelected={selectedProduct?.id === product.id}
+                  onSelect={() => handleSelectProduct(product)}
+                  eyebrow="Product"
+                  title={product.title}
+                  titleFallback="Untitled Product"
+                  badge="SHOP"
+                  description={product.description}
+                  primaryLabel="Details"
+                  primaryValue={`${product.stock || 0} available`}
+                  secondaryLabel="Type"
+                  secondaryValue={
+                    product.deliveryMode === "delivery"
+                      ? "Local Delivery"
+                      : product.deliveryMode === "pickup"
+                      ? `Pickup${product.pickupAddress ? ` Ã¢â‚¬Â¢ ${product.pickupAddress}` : ""}`
+                      : "Pickup"
+                  }
+                  summaryText={`${product.category || "General"} Ã¢â‚¬Â¢ ${product.condition || "New"} Product`}
+                  price={(Number(product.price) || 0).toFixed(2)}
+                  buttonText={inCart ? "Add another" : "Add to Cart"}
+                  onButtonClick={(event) => handleAddToCart(event, product)}
+                />
               );
-
               if (selectedProduct?.id !== product.id) {
                 return [card];
               }
@@ -284,7 +244,7 @@ export default function ProductsPage() {
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-orange-600 text-lg">🛍️</span>
+                          <span className="text-orange-600 text-lg">[Product]</span>
                           <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
                               Product Details

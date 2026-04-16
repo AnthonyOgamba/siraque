@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import SiteHeader from "./components/SiteHeader";
+import ListingCard from "./components/ListingCard";
 import { useEffect, useState } from "react";
 import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "./utils/firebase";
@@ -361,7 +362,7 @@ export default function HomePage() {
                       Chronos Elite Series
                     </p>
                   </div>
-                  <span className="text-orange-600 text-xl">→</span>
+                  <span className="text-orange-600 text-xl">-&gt;</span>
                 </div>
               </div>
             </div>
@@ -409,89 +410,43 @@ export default function HomePage() {
                   const inCart = cart.some((item) => item.id === listing.id);
 
                   const card = (
-                    <div
+                    <ListingCard
                       key={listing.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleSelectListing(listing)}
-                      className={`bg-white rounded-[2rem] border shadow-sm hover:shadow-xl transition-all duration-300 ${
-                        selectedListing?.id === listing.id
-                          ? "border-orange-500 ring-1 ring-orange-200"
-                          : "border-slate-200"
-                      } cursor-pointer h-full`}
-                    >
-                      <div className="p-8 flex h-full flex-col gap-5">
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                              {isService ? (isPackage ? "Package" : "Service") : getListingTag(listing)}
-                            </p>
-                            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                              {listing.title || "Untitled Listing"}
-                            </h2>
-                          </div>
-                          <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                            {getCardBadgeText(listing)}
-                          </span>
-                        </div>
-
-                        <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
-                          {listing.description || "No description available."}
-                        </p>
-
-                        <div className="space-y-3 text-sm text-slate-500">
-                          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                            <span className="font-semibold text-slate-900">
-                              {isService ? "Duration" : "Details"}
-                            </span>
-                            <span>
-                              {isService
-                                ? isPackage
-                                  ? `${listing.totalDuration || 0}m Session`
-                                  : `${listing.duration || 0}m Session`
-                                : getDetailLabel(listing)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                            <span className="font-semibold text-slate-900">
-                              {isService ? "Delivery" : "Type"}
-                            </span>
-                            <span className="text-right">
-                              {isService ? getServiceDeliveryText(listing) : getSecondaryLabel(listing)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                          {getCardSummaryText(listing)}
-                        </div>
-
-                        <div className="mt-auto text-3xl font-black text-slate-900">
-                          ${(Number(listing.price) || 0).toFixed(2)}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (isService && isPackage) {
-                              handleSelectListing(listing);
-                            } else {
-                              handleAddToCart(event, listing);
-                            }
-                          }}
-                          className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
-                        >
-                          {isService && isPackage
-                            ? "Select package items"
-                            : inCart
-                            ? "Add another"
-                            : "Add to Cart"}
-                        </button>
-                      </div>
-                    </div>
+                      isSelected={selectedListing?.id === listing.id}
+                      onSelect={() => handleSelectListing(listing)}
+                      eyebrow={isService ? (isPackage ? "Package" : "Service") : getListingTag(listing)}
+                      title={listing.title}
+                      titleFallback="Untitled Listing"
+                      badge={getCardBadgeText(listing)}
+                      description={listing.description}
+                      primaryLabel={isService ? "Duration" : "Details"}
+                      primaryValue={
+                        isService
+                          ? isPackage
+                            ? `${listing.totalDuration || 0}m Session`
+                            : `${listing.duration || 0}m Session`
+                          : getDetailLabel(listing)
+                      }
+                      secondaryLabel={isService ? "Delivery" : "Type"}
+                      secondaryValue={isService ? getServiceDeliveryText(listing) : getSecondaryLabel(listing)}
+                      summaryText={getCardSummaryText(listing)}
+                      price={(Number(listing.price) || 0).toFixed(2)}
+                      buttonText={
+                        isService && isPackage
+                          ? "Select package items"
+                          : inCart
+                          ? "Add another"
+                          : "Add to Cart"
+                      }
+                      onButtonClick={(event) => {
+                        if (isService && isPackage) {
+                          handleSelectListing(listing);
+                        } else {
+                          handleAddToCart(event, listing);
+                        }
+                      }}
+                    />
                   );
-
                   if (selectedListing?.id !== listing.id) {
                     return [card];
                   }
@@ -503,7 +458,7 @@ export default function HomePage() {
                         <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                           <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                              <span className="text-orange-600 text-lg">📦</span>
+                              <span className="text-orange-600 text-lg">[Details]</span>
                               <div>
                                 <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
                                   {getListingTag(selectedListing)} Details
@@ -590,7 +545,7 @@ export default function HomePage() {
                                             ? 'border-orange-600 bg-orange-600 text-white'
                                             : 'border-slate-300 text-slate-400'
                                         }`}>
-                                          {selected ? '✓' : index + 1}
+                                          {selected ? 'OK' : index + 1}
                                         </span>
                                       </div>
 
@@ -766,9 +721,9 @@ export default function HomePage() {
               professional talent, and high-end rentals.
             </p>
             <div className="flex gap-4 text-slate-400">
-              <span className="hover:text-orange-600 cursor-pointer">🌐</span>
-              <span className="hover:text-orange-600 cursor-pointer">🔗</span>
-              <span className="hover:text-orange-600 cursor-pointer">✉️</span>
+              <span className="hover:text-orange-600 cursor-pointer">Web</span>
+              <span className="hover:text-orange-600 cursor-pointer">Link</span>
+              <span className="hover:text-orange-600 cursor-pointer">Mail</span>
             </div>
           </div>
 
@@ -794,13 +749,13 @@ export default function HomePage() {
             <h4 className="font-bold text-slate-900 mb-6">Language</h4>
             <div className="bg-white border border-slate-200 px-4 py-2 rounded-lg flex justify-between items-center cursor-pointer hover:border-orange-600 transition-colors">
               <span className="text-sm text-slate-600">English (US)</span>
-              <span className="text-slate-400 text-sm">⌄</span>
+              <span className="text-slate-400 text-sm">v</span>
             </div>
           </div>
         </div>
 
         <div className="max-w-screen-2xl mx-auto px-10 mt-20 pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-slate-500">© 2024 Siraque. All rights reserved.</p>
+          <p className="text-sm text-slate-500">(c) 2024 Siraque. All rights reserved.</p>
           <div className="flex gap-8">
             <a href="#" className="text-xs text-slate-400 hover:text-orange-600">Instagram</a>
             <a href="#" className="text-xs text-slate-400 hover:text-orange-600">LinkedIn</a>

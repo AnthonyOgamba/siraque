@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
+import ListingCard from "../components/ListingCard";
 import { collection, doc, getDocs, increment, query, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "../utils/firebase";
 
@@ -298,87 +299,47 @@ export default function ServicesPage() {
               const inCart = cart.some((item) => item.id === service.id);
 
               const card = (
-                <div
+                <ListingCard
                   key={service.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectService(service)}
-                  className={`bg-white rounded-[2rem] border shadow-sm hover:shadow-xl transition-all duration-300 ${
-                    selectedService?.id === service.id
-                      ? "border-orange-500 ring-1 ring-orange-200"
-                      : "border-slate-200"
-                  } cursor-pointer h-full`}
-                >
-                  <div className="p-8 flex h-full flex-col gap-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                          {isPackage ? "Package" : "Service"}
-                        </p>
-                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                          {service.title || "Untitled Service"}
-                        </h2>
-                      </div>
-                      <span className="rounded-full bg-orange-100 text-orange-600 px-3 py-1 text-[0.65rem] font-bold uppercase">
-                        {isPackage ? "PACKAGE" : "PRO"}
-                      </span>
-                    </div>
-
-                    <p className="min-h-[2.5rem] text-sm text-slate-500 line-clamp-2">
-                      {service.description || "No description available."}
-                    </p>
-
-                    <div className="space-y-3 text-sm text-slate-500">
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                        <span className="font-semibold text-slate-900">Duration</span>
-                        <span>
-                          {isPackage
-                            ? `${service.totalDuration || 0}m Session`
-                            : `${service.duration || 0}m Session`}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                        <span className="font-semibold text-slate-900">Delivery</span>
-                        <span className="text-right">
-                          {service.deliveryMode === "studio"
-                            ? `In-Studio${service.studioAddress ? ` • ${service.studioAddress}` : ""}`
-                            : service.deliveryMode === "mobile"
-                            ? "Mobile / On-site"
-                            : service.deliveryMode === "digital"
-                            ? "Digital / Video"
-                            : "Remote Delivery"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-                      {isPackage
-                        ? `${Array.isArray(service.services) ? service.services.length : 0} Services Included`
-                        : "Professional Service"}
-                    </div>
-
-                    <div className="mt-auto text-3xl font-black text-slate-900">
-                      ${(Number(service.price) || 0).toFixed(2)}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (isPackage) {
-                          handleSelectService(service);
-                        } else {
-                          handleAddToCart(event, service);
-                        }
-                      }}
-                      className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
-                    >
-                      {isPackage ? "Select package items" : inCart ? "Add another" : "Add to Cart"}
-                    </button>
-                  </div>
-                </div>
+                  isSelected={selectedService?.id === service.id}
+                  onSelect={() => handleSelectService(service)}
+                  eyebrow={isPackage ? "Package" : "Service"}
+                  title={service.title}
+                  titleFallback="Untitled Service"
+                  badge={isPackage ? "PACKAGE" : "PRO"}
+                  description={service.description}
+                  primaryLabel="Duration"
+                  primaryValue={
+                    isPackage
+                      ? `${service.totalDuration || 0}m Session`
+                      : `${service.duration || 0}m Session`
+                  }
+                  secondaryLabel="Delivery"
+                  secondaryValue={
+                    service.deliveryMode === "studio"
+                      ? `In-Studio${service.studioAddress ? ` • ${service.studioAddress}` : ""}`
+                      : service.deliveryMode === "mobile"
+                      ? "Mobile / On-site"
+                      : service.deliveryMode === "digital"
+                      ? "Digital / Video"
+                      : "Remote Delivery"
+                  }
+                  summaryText={
+                    isPackage
+                      ? `${Array.isArray(service.services) ? service.services.length : 0} Services Included`
+                      : "Professional Service"
+                  }
+                  price={(Number(service.price) || 0).toFixed(2)}
+                  buttonText={isPackage ? "Select package items" : inCart ? "Add another" : "Add to Cart"}
+                  onButtonClick={(event) => {
+                    if (isPackage) {
+                      handleSelectService(service);
+                    } else {
+                      handleAddToCart(event, service);
+                    }
+                  }}
+                />
               );
-
               if (selectedService?.id !== service.id) {
                 return [card];
               }
@@ -390,7 +351,7 @@ export default function ServicesPage() {
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-orange-600 text-lg">📦</span>
+                          <span className="text-orange-600 text-lg">[Details]</span>
                           <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-bold">
                               {selectedService.subtype === "package" ? "Package Details" : "Service Details"}
@@ -475,7 +436,7 @@ export default function ServicesPage() {
                                         ? 'border-orange-600 bg-orange-600 text-white'
                                         : 'border-slate-300 text-slate-400'
                                     }`}>
-                                      {selected ? '✓' : index + 1}
+                                      {selected ? 'OK' : index + 1}
                                     </span>
                                   </div>
 
