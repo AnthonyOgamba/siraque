@@ -225,6 +225,16 @@ export default function HomePage() {
     return listing.deliveryMode || "Remote";
   }
 
+  function getServiceDeliveryText(listing) {
+    return listing.deliveryMode === "studio"
+      ? `In-Studio${listing.studioAddress ? ` • ${listing.studioAddress}` : ""}`
+      : listing.deliveryMode === "mobile"
+      ? "Mobile / On-site"
+      : listing.deliveryMode === "digital"
+      ? "Digital / Video"
+      : "Remote Delivery";
+  }
+
   useEffect(() => {
     async function fetchServices() {
       setLoading(true);
@@ -367,6 +377,8 @@ export default function HomePage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {filteredListings.flatMap((listing) => {
+                  const isService = listing.type === "service";
+                  const isPackage = listing.subtype === "package";
                   const inCart = cart.some((item) => item.id === listing.id);
 
                   const card = (
@@ -385,7 +397,7 @@ export default function HomePage() {
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <p className="text-xs uppercase tracking-[0.25em] font-semibold text-orange-600">
-                              {getListingTag(listing)}
+                              {isService ? (isPackage ? "Package" : "Service") : getListingTag(listing)}
                             </p>
                             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                               {listing.title || "Untitled Listing"}
@@ -402,14 +414,32 @@ export default function HomePage() {
 
                         <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-900">Details</span>
-                            <span>{getDetailLabel(listing)}</span>
+                            <span className="font-semibold text-slate-900">
+                              {isService ? "Duration" : "Details"}
+                            </span>
+                            <span>
+                              {isService
+                                ? isPackage
+                                  ? `${listing.totalDuration || 0}m Session`
+                                  : `${listing.duration || 0}m Session`
+                                : getDetailLabel(listing)}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-900">Type</span>
-                            <span>{getSecondaryLabel(listing)}</span>
+                            <span className="font-semibold text-slate-900">
+                              {isService ? "Delivery" : "Type"}
+                            </span>
+                            <span>
+                              {isService ? getServiceDeliveryText(listing) : getSecondaryLabel(listing)}
+                            </span>
                           </div>
                         </div>
+
+                        {isService && isPackage && (
+                          <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+                            {Array.isArray(listing.services) ? listing.services.length : 0} Services Included
+                          </div>
+                        )}
 
                         <div className="mt-auto text-3xl font-black text-slate-900">
                           ${(Number(listing.price) || 0).toFixed(2)}
@@ -417,10 +447,21 @@ export default function HomePage() {
 
                         <button
                           type="button"
-                          onClick={(event) => handleAddToCart(event, listing)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (isService && isPackage) {
+                              handleSelectListing(listing);
+                            } else {
+                              handleAddToCart(event, listing);
+                            }
+                          }}
                           className="rounded-3xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 transition-all"
                         >
-                          {inCart ? "Add another" : "Add to Cart"}
+                          {isService && isPackage
+                            ? "Select package items"
+                            : inCart
+                            ? "Add another"
+                            : "Add to Cart"}
                         </button>
                       </div>
                     </div>
