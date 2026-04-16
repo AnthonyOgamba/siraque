@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function CreateServicePackagePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white pt-24 px-6">Loading...</div>}>
+      <CreateServicePackagePageContent />
+    </Suspense>
+  );
+}
+
+function CreateServicePackagePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const listingId = searchParams?.get("id");
@@ -17,7 +25,6 @@ export default function CreateServicePackagePage() {
   const pageDescription = isEditMode
     ? "Update this package offering with new pricing, services, and delivery details."
     : "Combine multiple individual services into a curated bundle with exclusive pricing for your clients.";
-    "Combine multiple individual services into a curated bundle with exclusive pricing for your clients.";
   const publishButtonText = "Publish Package";
 
   const [deliveryMode, setDeliveryMode] = useState("studio");
@@ -265,7 +272,7 @@ export default function CreateServicePackagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#2d3338]">
+      <div className="min-h-screen bg-white text-[#2d3338]">
       <div className="pt-24 px-6 pb-20 max-w-7xl mx-auto">
         <div className="space-y-10 mb-12">
           <header className="flex justify-between items-end min-h-[110px]">
@@ -731,6 +738,5 @@ export default function CreateServicePackagePage() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
