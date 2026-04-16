@@ -2,12 +2,20 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../utils/firebase";
 
 export default function CreateProductPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white pt-24 px-6">Loading page...</div>}>
+      <CreateProductPageContent />
+    </Suspense>
+  );
+}
+
+function CreateProductPageContent() {
   const searchParams = useSearchParams();
   const listingId = searchParams?.get("id");
   const isEditMode = Boolean(listingId);
@@ -169,7 +177,7 @@ export default function CreateProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#2d3338] pt-24 px-6 pb-20 max-w-7xl mx-auto">
+      <div className="min-h-screen bg-white text-[#2d3338] pt-24 px-6 pb-20 max-w-7xl mx-auto">
         <div className="space-y-10 mb-12">
           <header className="flex justify-between items-end min-h-[110px]">
             <div className="space-y-2">
